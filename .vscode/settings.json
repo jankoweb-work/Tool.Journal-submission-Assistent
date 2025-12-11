@@ -1,0 +1,21 @@
+{
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/node_modules": true,
+        ".venv/": true,
+        ".github/": true,
+        "build/": true,
+        "dist/": true,
+        ".vscode/": true,
+        ".gitignore": true,
+        "*.spec": true,
+        "*.code-workspace": true
+    },
+    "hide-files.files": []
+}

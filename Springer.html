@@ -1,0 +1,327 @@
+<!--
+    Springer LaTeX Metadata Extractor
+    Author: Jan Kohout
+    Email: jan.kohout@vscht.cz
+    Version: 1.0
+    Date: 2025-02-14
+
+    Description:
+    Paste your Springer LaTeX (.tex) content into the input box.
+    Click "Extract" to parse title, abstract, authors, and affiliations.
+    Any value shown inside a blue box is clickable and copies to clipboard.
+-->
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Springer LaTeX Extractor</title>
+
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 50px;
+        }
+
+        h2 {
+            margin-top: 28px;
+        }
+
+        .row {
+            margin: 6px 0;
+            padding: 4px 0;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .copybox {
+            padding: 2px 6px;
+            margin: 0 4px;
+            background: #e8f0ff;
+            border: 1px solid #8fb2ff;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        .copybox:hover {
+            background: #d9e7ff;
+        }
+
+        .smallhint {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+
+        .copybox.truncate {
+            max-width: 600px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Springer LaTeX Metadata Extractor</h1>
+
+    <div class="smallhint">
+        Paste your LaTeX manuscript text below and click Extract.<br>
+        Click any blue box to copy its content to clipboard.
+    </div>
+
+    <textarea id="texinput" placeholder="Paste your .tex content here"></textarea>
+    <br><br>
+
+    <button onclick="extract()">Extract</button>
+
+    <div id="out"></div>
+
+    <script>
+        /* ------------------------------
+           Decode Czech LaTeX accents
+        -------------------------------- */
+        function decodeLatexAccents(str) {
+            if (!str) return "";
+
+            const map = {
+                "\\v{s}": "š", "\\v{S}": "Š",
+                "\\v{c}": "č", "\\v{C}": "Č",
+                "\\v{z}": "ž", "\\v{Z}": "Ž",
+                "\\v{e}": "ě", "\\v{E}": "Ě",
+                "\\v{n}": "ň", "\\v{N}": "Ň",
+                "\\v{r}": "ř", "\\v{R}": "Ř",
+                "\\v{t}": "ť", "\\v{T}": "Ť",
+
+                "\\'{a}": "á", "\\'{A}": "Á",
+                "\\'{e}": "é", "\\'{E}": "É",
+                "\\'{i}": "í", "\\'{I}": "Í",
+                "\\'{o}": "ó", "\\'{O}": "Ó",
+                "\\'{u}": "ú", "\\'{U}": "Ú",
+                "\\'{y}": "ý", "\\'{Y}": "Ý",
+
+                "\\r{u}": "ů", "\\r{U}": "Ů"
+            };
+
+            for (const key in map) {
+                str = str.replaceAll(key, map[key]);
+            }
+
+            return str;
+        }
+
+        /* ------------------------------
+           Extract text inside balanced { }
+        -------------------------------- */
+        function extractBalanced(str, startIndex) {
+            let i = startIndex, depth = 1;
+            while (i < str.length && depth > 0) {
+                if (str[i] === "{") depth++;
+                if (str[i] === "}") depth--;
+                i++;
+            }
+            return str.slice(startIndex, i - 1);
+        }
+
+        /* ------------------------------
+           Extract fnm{...}, sur{...}
+        -------------------------------- */
+        function extractFirstName(block) {
+            const pos = block.indexOf("\\fnm{");
+            if (pos === -1) return "";
+            const start = block.indexOf("{", pos) + 1;
+            return decodeLatexAccents(extractBalanced(block, start));
+        }
+
+        function extractSurname(block) {
+            const pos = block.indexOf("\\sur{");
+            if (pos === -1) return "";
+            const start = block.indexOf("{", pos) + 1;
+            return decodeLatexAccents(extractBalanced(block, start));
+        }
+
+        /* ------------------------------
+           Extract authors
+        -------------------------------- */
+        function parseAuthors(tex) {
+            const authors = [];
+            const regex = /\\author\*?\[([^\]]+)\]\{([\s\S]*?)\}\\email\{([^}]*)\}/g;
+            let m;
+
+            while ((m = regex.exec(tex))) {
+                const affils = m[1].split(",").map(x => x.trim());
+                const block = m[2];
+                const email = m[3];
+
+                const fn = extractFirstName(block);
+                const sn = extractSurname(block);
+
+                authors.push({
+                    firstName: fn,
+                    lastName: sn,
+                    email,
+                    affils
+                });
+            }
+            return authors;
+        }
+
+        /* ------------------------------
+           Extract affiliations (balanced)
+        -------------------------------- */
+        function extractAffils(tex) {
+            const out = [];
+            let pos = 0;
+
+            while (true) {
+                const start = tex.indexOf("\\affil", pos);
+                if (start === -1) break;
+
+                const idx = tex.slice(start).match(/\\affil\*?\[([0-9]+)\]/);
+                if (!idx) break;
+
+                const index = idx[1];
+                const braceStart = tex.indexOf("{", start) + 1;
+                const block = extractBalanced(tex, braceStart);
+
+                out.push({ index, block });
+                pos = braceStart + block.length;
+            }
+
+            return out;
+        }
+
+        /* ------------------------------
+           Parse affiliation fields
+        -------------------------------- */
+        function parseAffiliationBlock(block) {
+            function get(cmd) {
+                const m = block.match(new RegExp("\\\\" + cmd + "\\{([^}]*)\\}"));
+                return m ? decodeLatexAccents(m[1].trim()) : "";
+            }
+            return {
+                dep: get("orgdiv"),
+                org: get("orgname"),
+                street: get("street"),
+                city: get("city"),
+                postcode: get("postcode"),
+                state: get("state"),
+                country: get("country")
+            };
+        }
+
+        /* ------------------------------
+           Main parser
+        -------------------------------- */
+        function parseSpringer(tex) {
+            tex = tex.replace(/%.*/g, "");
+
+            const title = (tex.match(/\\title\{([\s\S]*?)\}/) || [])[1] || "";
+            const abstract = (tex.match(/\\abstract\{([\s\S]*?)\}/) || [])[1] || "";
+
+            const authors = parseAuthors(tex);
+
+            const rawAff = extractAffils(tex);
+            const affils = rawAff.map(a => ({
+                index: a.index,
+                ...parseAffiliationBlock(a.block)
+            }));
+
+            return { title, abstract, authors, affils };
+        }
+
+        /* ------------------------------
+           Generate a clickable copybox
+        -------------------------------- */
+        function box(value) {
+            return `<span class="copybox" data-copy="${value}">${value}</span>`;
+        }
+
+        /* ------------------------------
+           Render output
+        -------------------------------- */
+        function extract() {
+            const tex = document.getElementById("texinput").value;
+            const out = document.getElementById("out");
+            out.innerHTML = "";
+
+            const data = parseSpringer(tex);
+
+            /* ---- TITLE ---- */
+            const t = document.createElement("div");
+            t.className = "row";
+            t.innerHTML = `Title: ${box(data.title)}`;
+            out.appendChild(t);
+
+            /* ---- ABSTRACT ---- */
+            const abs = document.createElement("div");
+            abs.className = "row";
+            abs.innerHTML = `Abstract: ${box(data.abstract)}`;
+            out.appendChild(abs);
+
+            /* ---- AFFILIATIONS ---- */
+            const hA = document.createElement("h2");
+            hA.textContent = "Affiliations";
+            out.appendChild(hA);
+
+            data.affils.forEach(aff => {
+                const row = document.createElement("div");
+                row.className = "row";
+
+                let html = `Affiliation ${aff.index}: `;
+
+                if (aff.org) html += `${box(aff.org)} `;
+
+                row.innerHTML = html;
+                out.appendChild(row);
+            });
+
+
+            /* ---- AUTHORS ---- */
+            const h = document.createElement("h2");
+            h.textContent = "Authors";
+            out.appendChild(h);
+
+            data.authors.forEach((a, i) => {
+                const affTexts = a.affils.map(idx => {
+                    const af = data.affils.find(x => x.index === idx);
+                    if (!af) return "";
+                    return af.org || "";
+                });
+
+                const row = document.createElement("div");
+                row.className = "row";
+                row.innerHTML =
+                    `Author ${i + 1}: ` +
+                    box(a.firstName) +
+                    " " +
+                    box(a.lastName) +
+                    " | " + box(a.email) +
+                    " | Affils: " + affTexts.map(x => box(x)).join(" ");
+                out.appendChild(row);
+            });
+        }
+
+        /* ------------------------------
+           Global click handler for copyboxes
+        -------------------------------- */
+        document.addEventListener("click", e => {
+            if (e.target.classList.contains("copybox")) {
+                const txt = e.target.dataset.copy;
+                navigator.clipboard.writeText(txt);
+                e.target.style.background = "#c9f7c9";
+                setTimeout(() => e.target.style.background = "#e8f0ff", 200);
+            }
+        });
+    </script>
+
+</body>
+
+</html>
