@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Springer Bookmarklet - Instalace</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+            font-size: 32px;
+            font-weight: 600;
+            border-bottom: 3px solid #56ab2f;
+            padding-bottom: 12px;
+        }
+        h2 {
+            color: #444;
+            font-size: 20px;
+            margin-top: 32px;
+            font-weight: 600;
+        }
+        .step {
+            margin: 24px 0;
+            padding: 16px;
+            background: #f8f9fa;
+            border-left: 4px solid #56ab2f;
+            border-radius: 6px;
+        }
+        .step-number {
+            display: inline-block;
+            background: #56ab2f;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 32px;
+            font-weight: bold;
+            margin-right: 12px;
+            margin-bottom: 8px;
+        }
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 12px 0;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .copy-btn {
+            background: #56ab2f;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 8px;
+            transition: background 0.2s;
+        }
+        .copy-btn:hover {
+            background: #2e7d32;
+        }
+        .highlight {
+            background: #fff3cd;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 16px 0;
+            border-left: 4px solid #ffc107;
+        }
+        .instruction {
+            margin: 12px 0;
+            line-height: 1.6;
+        }
+        a.bookmarklet-link {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 12px 20px;
+            background: #56ab2f;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        a.bookmarklet-link:hover {
+            background: #2e7d32;
+        }
+        .demo {
+            background: #e8f5e9;
+            border: 2px solid #56ab2f;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 16px 0;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            text-align: center;
+            font-size: 13px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📌 Springer Bookmarklet - Automatické vyplňování formuláře</h1>
+
+        <div class="highlight">
+            <strong>⚡ Rychlá instalace:</strong> Nejjednodušší způsob je táhnout tlačítko níže do zakładky prohlížeče.
+        </div>
+
+        <h2>Instalace</h2>
+
+        <div class="step">
+            <div class="step-number">1</div>
+            <strong>Nejjednodušší varianta - Drag & Drop</strong>
+            <div class="instruction">
+                Podržte levé tlačítko myši na odkazu níže a táhněte ho do <strong>bookmarks baru</strong> (horní část prohlížeče).
+                Pokud vidíte řádek se hvězdičkami, máte správné místo.
+            </div>
+            <div style="text-align: center; margin: 20px 0;">
+                <a href="javascript:(function(){const laTexCode=prompt('Paste your Springer LaTeX content:');if(!laTexCode)return;function decodeLatexAccents(str){if(!str)return'';const map={'\\v{s}':'š','\\v{S}':'Š','\\v{c}':'č','\\v{C}':'Č','\\v{z}':'ž','\\v{Z}':'Ž','\\v{e}':'ě','\\v{E}':'Ě','\\v{n}':'ň','\\v{N}':'Ň','\\v{r}':'ř','\\v{R}':'Ř','\\v{t}':'ť','\\v{T}':'Ť','\\\'{a}':'á','\\\'{A}':'Á','\\\'{e}':'é','\\\'{E}':'É','\\\'{i}':'í','\\\'{I}':'Í','\\\'{o}':'ó','\\\'{O}':'Ó','\\\'{u}':'ú','\\\'{U}':'Ú','\\\'{y}':'ý','\\\'{Y}':'Ý','\\r{u}':'ů','\\r{U}':'Ů'};for(const key in map){str=str.replaceAll(key,map[key]);}return str;}function extractBalanced(str,startIndex){let i=startIndex,depth=1;while(i<str.length&&depth>0){if(str[i]==='{')depth++;if(str[i]==='}')depth--;i++;}return str.slice(startIndex,i-1);}function extractFirstName(block){const pos=block.indexOf('\\\\fnm{');if(pos===-1)return'';const start=block.indexOf('{',pos)+1;return decodeLatexAccents(extractBalanced(block,start));}function extractSurname(block){const pos=block.indexOf('\\\\sur{');if(pos===-1)return'';const start=block.indexOf('{',pos)+1;return decodeLatexAccents(extractBalanced(block,start));}function parseAuthors(tex){const authors=[];const regex=/\\\\author\\*?\\[([^\\]]+)\\]\\{([\\s\\S]*?)\\}\\\\email\\{([^}]*)\\}/g;let m;while((m=regex.exec(tex))){const affils=m[1].split(',').map(x=>x.trim());const block=m[2];const email=m[3];const fn=extractFirstName(block);const sn=extractSurname(block);const isCorresponding=block.includes('\\\\corref')||m[0].includes('\\\\author*');authors.push({firstName:fn,lastName:sn,email,affils,isCorresponding});}return authors;}function extractAffils(tex){const out=[];let pos=0;while(true){const start=tex.indexOf('\\\\affil',pos);if(start===-1)break;const idx=tex.slice(start).match(/\\\\affil\\*?\\[([0-9]+)\\]/);if(!idx)break;const index=idx[1];const braceStart=tex.indexOf('{',start)+1;const block=extractBalanced(tex,braceStart);out.push({index,block});pos=braceStart+block.length;}return out;}function parseAffiliationBlock(block){function get(cmd){const m=block.match(new RegExp('\\\\\\\\'+cmd+'\\\\{([^}]*)\\\\}'));return m?decodeLatexAccents(m[1].trim()):'';};return{dep:get('orgdiv'),org:get('orgname'),street:get('street'),city:get('city'),postcode:get('postcode'),state:get('state'),country:get('country')};}function parseSpringer(tex){tex=tex.replace(/%.*/g,'');let title='';const titlePos=tex.indexOf('\\\\title{');if(titlePos!==-1){const titleStart=tex.indexOf('{',titlePos)+1;title=extractBalanced(tex,titleStart);}let abstract='';const beginAbstractPos=tex.indexOf('\\\\begin{abstract}');if(beginAbstractPos!==-1){const abstractStart=beginAbstractPos+'\\\\begin{abstract}'.length;const abstractEnd=tex.indexOf('\\\\end{abstract}',abstractStart);if(abstractEnd!==-1){abstract=tex.slice(abstractStart,abstractEnd).trim();if(abstract.startsWith('{}'))abstract=abstract.substring(2);}}else{const abstractPos=tex.indexOf('\\\\abstract{');if(abstractPos!==-1){const abstractStart=tex.indexOf('{',abstractPos)+1;abstract=extractBalanced(tex,abstractStart);}}const authors=parseAuthors(tex);const rawAff=extractAffils(tex);const affils=rawAff.map(a=>({index:a.index,...parseAffiliationBlock(a.block)}));return{title,abstract,authors,affils};}const data=parseSpringer(laTexCode);function setInputValue(selector,value){const input=document.querySelector(selector);if(input){input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));}}function clickElement(selector){const el=document.querySelector(selector);if(el)el.click();}const titleInputs=Array.from(document.querySelectorAll('input[type=\"text\"]')).filter(inp=>inp.placeholder&&inp.placeholder.includes('Title'));if(titleInputs.length>0){setInputValue('input[placeholder*=\"Title\"]',data.title);}const abstractInputs=Array.from(document.querySelectorAll('textarea')).filter(ta=>ta.placeholder&&ta.placeholder.includes('abstract'));if(abstractInputs.length>0){const abstractArea=abstractInputs[0];abstractArea.value=data.abstract;abstractArea.dispatchEvent(new Event('input',{bubbles:true}));}data.authors.forEach((author,idx)=>{const authorSection=document.querySelector(`[data-author-index=\"${idx}\"]`);if(authorSection){const details=authorSection.querySelector('details');if(details&&!details.open)details.open=true;const givenNameInputs=authorSection.querySelectorAll('input[type=\"text\"]');if(givenNameInputs.length>0){setInputValue('input[type=\"text\"]',author.firstName);}if(givenNameInputs.length>1){givenNameInputs[1].value=author.lastName;givenNameInputs[1].dispatchEvent(new Event('input',{bubbles:true}));}const emailInputs=authorSection.querySelectorAll('input[type=\"email\"]');if(emailInputs.length>0){setInputValue('input[type=\"email\"]',author.email);}if(author.affils.length>0){const affSelect=authorSection.querySelector('select');if(affSelect&&data.affils[author.affils[0]-1]){const affOrg=data.affils[author.affils[0]-1].org;const option=Array.from(affSelect.options).find(opt=>opt.text.includes(affOrg));if(option){affSelect.value=option.value;affSelect.dispatchEvent(new Event('change',{bubbles:true}));}}}}}});alert('✓ Springer form pre-filled!\\n\\nPlease review all fields to ensure accuracy.\\nSome fields may need manual adjustment depending on form structure.');})();" class="bookmarklet-link">📌 Springer Auto-Fill</a>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-number">2</div>
+            <strong>Alternativa - Ruční vytvoření закладky</strong>
+            <div class="instruction">
+                Pokud drag & drop nefunguje, postupujte takto:
+            </div>
+            <ol style="margin-left: 20px;">
+                <li>Klikněte pravým tlačítkem na odkaz výše <strong>→ Přidat закладku</strong></li>
+                <li>Název: <code>Springer Auto-Fill</code></li>
+                <li>Adresa: Zkopírujte text z pole níže
+                    <div class="code-block" id="bookmarklet-code">javascript:(function(){const laTexCode=prompt('Paste your Springer LaTeX content:');if(!laTexCode)return;function decodeLatexAccents(str){if(!str)return'';const map={'\\v{s}':'š','\\v{S}':'Š','\\v{c}':'č','\\v{C}':'Č','\\v{z}':'ž','\\v{Z}':'Ž','\\v{e}':'ě','\\v{E}':'Ě','\\v{n}':'ň','\\v{N}':'Ň','\\v{r}':'ř','\\v{R}':'Ř','\\v{t}':'ť','\\v{T}':'Ť','\\\'{a}':'á','\\\'{A}':'Á','\\\'{e}':'é','\\\'{E}':'É','\\\'{i}':'í','\\\'{I}':'Í','\\\'{o}':'ó','\\\'{O}':'Ó','\\\'{u}':'ú','\\\'{U}':'Ú','\\\'{y}':'ý','\\\'{Y}':'Ý','\\r{u}':'ů','\\r{U}':'Ů'};for(const key in map){str=str.replaceAll(key,map[key]);}return str;}function extractBalanced(str,startIndex){let i=startIndex,depth=1;while(i<str.length&&depth>0){if(str[i]==='{')depth++;if(str[i]==='}')depth--;i++;}return str.slice(startIndex,i-1);}function extractFirstName(block){const pos=block.indexOf('\\\\fnm{');if(pos===-1)return'';const start=block.indexOf('{',pos)+1;return decodeLatexAccents(extractBalanced(block,start));}function extractSurname(block){const pos=block.indexOf('\\\\sur{');if(pos===-1)return'';const start=block.indexOf('{',pos)+1;return decodeLatexAccents(extractBalanced(block,start));}function parseAuthors(tex){const authors=[];const regex=/\\\\author\\*?\\[([^\\]]+)\\]\\{([\\s\\S]*?)\\}\\\\email\\{([^}]*)\\}/g;let m;while((m=regex.exec(tex))){const affils=m[1].split(',').map(x=>x.trim());const block=m[2];const email=m[3];const fn=extractFirstName(block);const sn=extractSurname(block);const isCorresponding=block.includes('\\\\corref')||m[0].includes('\\\\author*');authors.push({firstName:fn,lastName:sn,email,affils,isCorresponding});}return authors;}function extractAffils(tex){const out=[];let pos=0;while(true){const start=tex.indexOf('\\\\affil',pos);if(start===-1)break;const idx=tex.slice(start).match(/\\\\affil\\*?\\[([0-9]+)\\]/);if(!idx)break;const index=idx[1];const braceStart=tex.indexOf('{',start)+1;const block=extractBalanced(tex,braceStart);out.push({index,block});pos=braceStart+block.length;}return out;}function parseAffiliationBlock(block){function get(cmd){const m=block.match(new RegExp('\\\\\\\\'+cmd+'\\\\{([^}]*)\\\\}'));return m?decodeLatexAccents(m[1].trim()):'';};return{dep:get('orgdiv'),org:get('orgname'),street:get('street'),city:get('city'),postcode:get('postcode'),state:get('state'),country:get('country')};}function parseSpringer(tex){tex=tex.replace(/%.*/g,'');let title='';const titlePos=tex.indexOf('\\\\title{');if(titlePos!==-1){const titleStart=tex.indexOf('{',titlePos)+1;title=extractBalanced(tex,titleStart);}let abstract='';const beginAbstractPos=tex.indexOf('\\\\begin{abstract}');if(beginAbstractPos!==-1){const abstractStart=beginAbstractPos+'\\\\begin{abstract}'.length;const abstractEnd=tex.indexOf('\\\\end{abstract}',abstractStart);if(abstractEnd!==-1){abstract=tex.slice(abstractStart,abstractEnd).trim();if(abstract.startsWith('{}'))abstract=abstract.substring(2);}}else{const abstractPos=tex.indexOf('\\\\abstract{');if(abstractPos!==-1){const abstractStart=tex.indexOf('{',abstractPos)+1;abstract=extractBalanced(tex,abstractStart);}}const authors=parseAuthors(tex);const rawAff=extractAffils(tex);const affils=rawAff.map(a=>({index:a.index,...parseAffiliationBlock(a.block)}));return{title,abstract,authors,affils};}const data=parseSpringer(laTexCode);function setInputValue(selector,value){const input=document.querySelector(selector);if(input){input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));}}function clickElement(selector){const el=document.querySelector(selector);if(el)el.click();}const titleInputs=Array.from(document.querySelectorAll('input[type=\"text\"]')).filter(inp=>inp.placeholder&&inp.placeholder.includes('Title'));if(titleInputs.length>0){setInputValue('input[placeholder*=\"Title\"]',data.title);}const abstractInputs=Array.from(document.querySelectorAll('textarea')).filter(ta=>ta.placeholder&&ta.placeholder.includes('abstract'));if(abstractInputs.length>0){const abstractArea=abstractInputs[0];abstractArea.value=data.abstract;abstractArea.dispatchEvent(new Event('input',{bubbles:true}));}data.authors.forEach((author,idx)=>{const authorSection=document.querySelector(`[data-author-index=\"${idx}\"]`);if(authorSection){const details=authorSection.querySelector('details');if(details&&!details.open)details.open=true;const givenNameInputs=authorSection.querySelectorAll('input[type=\"text\"]');if(givenNameInputs.length>0){setInputValue('input[type=\"text\"]',author.firstName);}if(givenNameInputs.length>1){givenNameInputs[1].value=author.lastName;givenNameInputs[1].dispatchEvent(new Event('input',{bubbles:true}));}const emailInputs=authorSection.querySelectorAll('input[type=\"email\"]');if(emailInputs.length>0){setInputValue('input[type=\"email\"]',author.email);}if(author.affils.length>0){const affSelect=authorSection.querySelector('select');if(affSelect&&data.affils[author.affils[0]-1]){const affOrg=data.affils[author.affils[0]-1].org;const option=Array.from(affSelect.options).find(opt=>opt.text.includes(affOrg));if(option){affSelect.value=option.value;affSelect.dispatchEvent(new Event('change',{bubbles:true}));}}}}}});alert('✓ Springer form pre-filled!\\n\\nPlease review all fields to ensure accuracy.\\nSome fields may need manual adjustment depending on form structure.');})();</div>
+                    <button class="copy-btn" onclick="copyToClipboard()">📋 Zkopírovat kód</button>
+                </li>
+                <li>Uložte закладku</li>
+            </ol>
+        </div>
+
+        <h2>Jak používat</h2>
+
+        <div class="demo">
+            <strong>1️⃣ Jděte na Springer submission formulář:</strong><br>
+            <code>https://submission.springernature.com/new/submission/[ID]/authors</code>
+
+            <div style="margin-top: 16px;">
+                <strong>2️⃣ Klikněte na закладku "Springer Auto-Fill"</strong>
+            </div>
+
+            <div style="margin-top: 16px;">
+                <strong>3️⃣ Vložte váš LaTeX obsah do dialogu</strong><br>
+                (Zkopírujte ze souboru .tex nebo pomocí mého webového nástroje)
+            </div>
+
+            <div style="margin-top: 16px;">
+                <strong>4️⃣ Potvrzením se formulář automaticky vyplní!</strong><br>
+                Zkontrolujte všechna pole a v případě potřeby ručně opravte.
+            </div>
+        </div>
+
+        <h2>ℹ️ Poznámky</h2>
+
+        <ul>
+            <li><strong>Bezpečnost:</strong> Bookmarklet běží pouze na vaší stránce, nic se neodesílá ven</li>
+            <li><strong>Podpora:</strong> Funguje s Springer LaTeX formátem s příkazy <code>\author</code>, <code>\affil</code>, <code>\title</code>, <code>\abstract</code></li>
+            <li><strong>Manuální oprava:</strong> Některá pole se mohou vyplnit nepřesně v závislosti na HTML struktuře formuláře - vždy zkontrolujte</li>
+            <li><strong>Afilace:</strong> Příslušenství se snaží automaticky přiřadit, ale může vyžadovat ručení výběr</li>
+            <li><strong>Odpovídající autor:</strong> Označen pomocí <code>\corref</code> nebo <code>\author*</code> v LaTeXu</li>
+        </ul>
+
+        <div class="footer">
+            <strong>Springer LaTeX Extractor & Bookmarklet</strong><br>
+            Autor: Jan Kohout<br>
+            <a href="https://jankoweb.github.io" target="_blank" style="color: #56ab2f;">jankoweb.github.io</a>
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard() {
+            const code = document.getElementById('bookmarklet-code').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                alert('✓ Kód zkopírován do schránky!');
+            }).catch(() => {
+                alert('Chyba při kopírování. Prosím zkopírujte ručně.');
+            });
+        }
+    </script>
+</body>
+</html>
