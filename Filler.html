@@ -218,14 +218,10 @@
         </div>
 
         <div class="smallhint">
-            <strong>Purpose:</strong> Parse author data from Excel, CSV, or any tabular format.<br>
-            Extracts: Name, Email, ORCID, Country<br><br>
-            <strong>How it works:</strong> Copy a table from Excel and paste it below.<br>
-            Expected format: Name | Email | ORCID | Country (or any order)<br>
-            Click any blue box to copy its content to clipboard.
+            Simply copy a table from Excel and paste it below. The parser automatically extracts Name, Email, ORCID, and Country fields. Click any blue box to copy its content.
         </div>
 
-        <textarea id="texinput" placeholder="Paste your table here (Name; Email; ORCID; Country)...">Paste your table here (Name; Email; ORCID; Country)...</textarea>
+        <textarea id="texinput" placeholder="Ctrl+C Ctrl+V from Excel"></textarea>
         <br><br>
 
         <div id="out"></div>
@@ -252,6 +248,7 @@
             const headerRow = firstLine.split(delimiter).map(cell => cell.trim().toLowerCase());
             
             // Find column indices
+            const titleIdx = headerRow.findIndex(h => h.includes('title') || h.includes('oslovení'));
             const nameIdx = headerRow.findIndex(h => h.includes('name') || h.includes('jméno') || h.includes('příjmení'));
             const emailIdx = headerRow.findIndex(h => h.includes('email') || h.includes('mail'));
             const orcidIdx = headerRow.findIndex(h => h.includes('orcid'));
@@ -265,13 +262,14 @@
 
                 const cells = row.split(delimiter).map(cell => cell.trim());
                 
+                const title = titleIdx !== -1 ? cells[titleIdx] || '' : '';
                 const name = nameIdx !== -1 ? cells[nameIdx] || '' : '';
                 const email = emailIdx !== -1 ? cells[emailIdx] || '' : '';
                 const orcid = orcidIdx !== -1 ? cells[orcidIdx] || '' : '';
                 const country = countryIdx !== -1 ? cells[countryIdx] || '' : '';
 
                 if (name) {
-                    authors.push({ name, email, orcid, country });
+                    authors.push({ title, name, email, orcid, country });
                 }
             }
 
@@ -320,23 +318,26 @@
                 const row = document.createElement("div");
                 row.className = "row";
                 
-                let html = `<strong>#${i + 1}</strong><div class="affil-grid" style="display: inline-grid; margin-left: 12px; vertical-align: top;">`;
+                let html = `<strong>#${i + 1}</strong> `;
                 
-                html += `<span class="label">Name:</span> <span>${box(author.name)}</span>`;
+                if (author.title) {
+                    html += box(author.title) + ` `;
+                }
+                
+                html += box(author.name);
                 
                 if (author.email) {
-                    html += `<span class="label">Email:</span> <span>${box(author.email)}</span>`;
+                    html += ` ` + box(author.email);
                 }
                 
                 if (author.orcid) {
-                    html += `<span class="label">ORCID:</span> <span>${box(author.orcid)}</span>`;
+                    html += ` ` + box(author.orcid);
                 }
                 
                 if (author.country) {
-                    html += `<span class="label">Country:</span> <span>${box(author.country)}</span>`;
+                    html += ` ` + box(author.country);
                 }
                 
-                html += "</div>";
                 row.innerHTML = html;
                 out.appendChild(row);
             });
