@@ -1,0 +1,740 @@
+<!--
+    Elsevier LaTeX Metadata Extractor
+    Author: Jan Kohout
+    Email: jan.kohout@vscht.cz
+    Version: 1.0
+    Date: 2025-12-18
+
+    Description:
+    Paste your Elsevier LaTeX (.tex) content into the input box.
+    Click "Extract" to parse title, abstract, authors, and affiliations.
+    Any value shown inside a blue box is clickable and copies to clipboard.
+-->
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Elsevier LaTeX Extractor</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 32px;
+            font-weight: 600;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #56ab2f;
+        }
+
+        h2 {
+            margin-top: 32px;
+            margin-bottom: 16px;
+            color: #444;
+            font-size: 24px;
+            font-weight: 600;
+            border-bottom: 3px solid #56ab2f;
+            padding-bottom: 8px;
+        }
+
+        .row {
+            margin: 12px 0;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #56ab2f;
+            line-height: 32px;
+        }
+
+        .row strong {
+            font-weight: 600;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .copybox {
+            padding: 4px 10px;
+            margin: 2px 4px;
+            background: #e8f0ff;
+            border: 1px solid #8fb2ff;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            transition: all 0.2s;
+            vertical-align: middle;
+        }
+
+        .copybox:hover {
+            background: #d9e7ff;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(86, 171, 47, 0.3);
+        }
+
+        .copybox.truncate {
+            max-width: 400px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .abstract-box {
+            display: inline-block;
+            max-width: 100%;
+            white-space: normal;
+            word-wrap: break-word;
+            line-height: 1.6;
+        }
+
+        .smallhint {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        .label {
+            display: inline-block;
+            min-height: 28px;
+            line-height: 28px;
+            vertical-align: middle;
+            font-weight: 600;
+        }
+
+        .tooltip {
+            position: fixed;
+            background: #333;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            max-width: 400px;
+            word-wrap: break-word;
+            z-index: 1000;
+            pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            line-height: 1.4;
+        }
+
+        .author-info {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .author-info strong {
+            color: #333;
+        }
+
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            text-align: center;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .footer a {
+            color: #56ab2f;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        .corresponding {
+            background: #e8f5e9 !important;
+            border-left: 4px solid #2e7d32 !important;
+        }
+
+        .affil-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 8px 16px;
+            align-items: start;
+        }
+
+        .affil-grid > * {
+            min-height: 28px;
+            display: flex;
+            align-items: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Elsevier LaTeX Metadata Extractor</h1>
+
+        <div class="author-info">
+            <strong>Author:</strong> Jan Kohout | 
+            <strong>Web:</strong> <a href="https://jankoweb.github.io" target="_blank" style="color: #56ab2f; text-decoration: none;">jankoweb.github.io</a> | 
+            <strong>Last updated:</strong> December 18, 2025
+        </div>
+
+        <div class="smallhint">
+            <strong>Purpose:</strong> Developed for easier manuscript submission to Elsevier journals.<br>
+            Helps you fill in metadata at <a href="https://www.editorialmanager.com/" target="_blank" style="color: #56ab2f;">www.editorialmanager.com</a><br><br>
+            <strong>How it helps:</strong> Instead of manually searching through your LaTeX file and copying text,<br>
+            simply click any blue box to copy the content (title, abstract, author names, emails, etc.) and paste directly into the submission form.<br><br>
+            Paste your LaTeX manuscript text below. Extraction happens automatically.<br>
+            Click any blue box to copy its content to clipboard.
+        </div>
+
+        <textarea id="texinput" placeholder="Paste your Elsevier .tex file content here (including \title, \begin{abstract}, \author, \address, \ead commands)...">Paste your Elsevier .tex file content here (including \title, \begin{abstract}, \author, \address, \ead commands)...</textarea>
+        <br><br>
+
+        <div id="out"></div>
+    </div>
+
+    <script>
+        /* ------------------------------
+           Decode Czech LaTeX accents
+        -------------------------------- */
+        function decodeLatexAccents(str) {
+            if (!str) return "";
+
+            const map = {
+                "\\v{s}": "š", "\\v{S}": "Š",
+                "\\v{c}": "č", "\\v{C}": "Č",
+                "\\v{z}": "ž", "\\v{Z}": "Ž",
+                "\\v{e}": "ě", "\\v{E}": "Ě",
+                "\\v{n}": "ň", "\\v{N}": "Ň",
+                "\\v{r}": "ř", "\\v{R}": "Ř",
+                "\\v{t}": "ť", "\\v{T}": "Ť",
+
+                "\\'{a}": "á", "\\'{A}": "Á",
+                "\\'{e}": "é", "\\'{E}": "É",
+                "\\'{i}": "í", "\\'{I}": "Í",
+                "\\'{o}": "ó", "\\'{O}": "Ó",
+                "\\'{u}": "ú", "\\'{U}": "Ú",
+                "\\'{y}": "ý", "\\'{Y}": "Ý",
+
+                "\\r{u}": "ů", "\\r{U}": "Ů"
+            };
+
+            for (const key in map) {
+                str = str.replaceAll(key, map[key]);
+            }
+
+            return str;
+        }
+
+        /* ------------------------------
+           Extract text inside balanced { }
+        -------------------------------- */
+        function extractBalanced(str, startIndex) {
+            let i = startIndex, depth = 1;
+            while (i < str.length && depth > 0) {
+                if (str[i] === "{") depth++;
+                if (str[i] === "}") depth--;
+                i++;
+            }
+            return str.slice(startIndex, i - 1);
+        }
+
+        /* ------------------------------
+           Split name to first and last
+        -------------------------------- */
+        function splitName(fullName) {
+            const parts = fullName.trim().split(/\s+/);
+            if (parts.length === 0) return { first: "", last: "" };
+            if (parts.length === 1) return { first: "", last: parts[0] };
+            
+            const lastName = parts[parts.length - 1];
+            const firstName = parts.slice(0, -1).join(" ");
+            return { first: firstName, last: lastName };
+        }
+        /* ------------------------------
+           Parse metadata table in % comments
+           Expect header: % Title\tName\tEmail\tORCID\tCountry
+        -------------------------------- */
+        function parseCommentMetadata(tex) {
+            const lines = tex.split(/\r?\n/);
+            let headers = null;
+            const map = {};
+
+            for (const line of lines) {
+                if (!line.trim().startsWith("%")) continue;
+                const raw = line.trim().replace(/^%\s*/, "");
+
+                // Detect header row
+                if (!headers && /\bName\b/.test(raw) && /\bEmail\b/.test(raw) && /\bORCID\b/.test(raw)) {
+                    headers = raw.split(/\t+/);
+                    continue;
+                }
+
+                // Data rows are tab-separated; if no headers, assume fixed order
+                const cols = raw.split(/\t+/);
+                if (cols.length < 3) continue;
+
+                const title = cols[0] || "";
+                const name = (cols[1] || "").trim();
+                const email = (cols[2] || "").trim();
+                const orcid = (cols[3] || "").trim();
+                const country = (cols[4] || "").trim();
+
+                if (!name) continue;
+                map[name] = { title, email, orcid, country };
+            }
+
+            return map;
+        }
+
+        /* ------------------------------
+           Extract authors (Elsevier format)
+        -------------------------------- */
+        function parseAuthors(tex) {
+            const authors = [];
+            
+            // Collect corresponding IDs from \cortext[...] and also accept 'cor...' tokens
+            const correspondingIds = new Set();
+            const cortextRegex = /\\cortext\[([^\]]+)\]/g;
+            let corMatch;
+            while ((corMatch = cortextRegex.exec(tex))) {
+                correspondingIds.add(corMatch[1].trim());
+            }
+
+            // Match: \author[affil]{Name} or \author[affil,cor1]{Name}
+            const authorRegex = /\\author\[([^\]]+)\]\{([^}]+)\}/g;
+            let m;
+
+            while ((m = authorRegex.exec(tex))) {
+                const refs = m[1].split(",").map(x => x.trim());
+                const block = m[2];
+                const fullName = decodeLatexAccents(block.trim());
+                const name = splitName(fullName);
+
+                // Check inline corresponding markers within author block
+                const cormarkIds = Array.from(block.matchAll(/\\cormark\[([^\]]+)\]/g)).map(x => x[1].trim());
+                const correfIds = Array.from(block.matchAll(/\\corref\{([^}]+)\}/g)).map(x => x[1].trim());
+
+                let isCorresponding = false;
+                if (cormarkIds.some(id => correspondingIds.has(id))) isCorresponding = true;
+                if (!isCorresponding && correfIds.some(id => correspondingIds.has(id))) isCorresponding = true;
+                // Fallback: if any ref equals a corresponding id or is 'cor*'
+                if (!isCorresponding) {
+                    isCorresponding = refs.some(ref => correspondingIds.has(ref) || ref.startsWith("cor"));
+                }
+
+                // Keep only numeric refs as affiliations
+                const affils = refs.filter(ref => /^\d+$/.test(ref));
+
+                authors.push({
+                    firstName: name.first,
+                    lastName: name.last,
+                    email: "",
+                    affils,
+                    isCorresponding,
+                    fullName
+                });
+            }
+            
+            // Extract emails - \ead{email}
+            const emailRegex = /\\ead\{([^}]+)\}/g;
+            let emailIndex = 0;
+            let emailMatch;
+            while ((emailMatch = emailRegex.exec(tex)) && emailIndex < authors.length) {
+                authors[emailIndex].email = emailMatch[1];
+                emailIndex++;
+            }
+
+            return authors;
+        }
+
+        /* ------------------------------
+           Extract affiliations (Elsevier: \address)
+        -------------------------------- */
+        function extractAffils(tex) {
+            const out = [];
+            let pos = 0;
+
+            while (true) {
+                const start = tex.indexOf("\\address[", pos);
+                if (start === -1) break;
+
+                // Extract index from [1], [2], etc.
+                const bracketStart = start + "\\address[".length;
+                const bracketEnd = tex.indexOf("]", bracketStart);
+                if (bracketEnd === -1) break;
+                
+                const index = tex.slice(bracketStart, bracketEnd).trim();
+
+                // Extract content using balanced braces
+                const braceStart = tex.indexOf("{", bracketEnd) + 1;
+                if (braceStart === 0) break;
+                
+                // Extract raw text first (before decoding)
+                const rawAddress = extractBalanced(tex, braceStart);
+                const fullAddress = decodeLatexAccents(rawAddress);
+
+                out.push({ 
+                    index, 
+                    fullAddress
+                });
+                
+                // Move position forward past this address
+                pos = braceStart + rawAddress.length + 1;
+            }
+
+            return out;
+        }
+
+        /* ------------------------------
+           Parse affiliation (Elsevier: simple text)
+        -------------------------------- */
+        function parseAffiliationBlock(fullAddress) {
+            // Try to extract parts from comma-separated address
+            const parts = fullAddress.split(",").map(p => p.trim());
+            
+            // Simple heuristic: last is often country
+            const country = parts.length > 0 ? parts[parts.length - 1] : "";
+            const org = parts.length > 0 ? parts[0] : "";
+            
+            return {
+                fullAddress,
+                org,
+                country,
+                dep: "",
+                street: "",
+                city: "",
+                postcode: "",
+                state: ""
+            };
+        }
+
+        /* ------------------------------
+           Main parser
+        -------------------------------- */
+        function parseElsevier(tex) {
+            const texAll = tex;
+            const metaByName = parseCommentMetadata(texAll);
+            const texNoComments = tex.replace(/%.*/g, "");
+            tex = texNoComments;
+
+            // Extract title using balanced braces
+            let title = "";
+            const titlePos = tex.indexOf("\\title{");
+            if (titlePos !== -1) {
+                const titleStart = tex.indexOf("{", titlePos) + 1;
+                title = decodeLatexAccents(extractBalanced(tex, titleStart));
+            }
+
+            // Extract abstract - support both \abstract{} and \begin{abstract}...\end{abstract}
+            let abstract = "";
+            
+            // Try \begin{abstract}...\end{abstract} format first
+            const beginAbstractPos = tex.indexOf("\\begin{abstract}");
+            if (beginAbstractPos !== -1) {
+                const abstractStart = beginAbstractPos + "\\begin{abstract}".length;
+                const abstractEnd = tex.indexOf("\\end{abstract}", abstractStart);
+                if (abstractEnd !== -1) {
+                    abstract = tex.slice(abstractStart, abstractEnd).trim();
+                    // Remove leading {} if present
+                    if (abstract.startsWith("{}")) {
+                        abstract = abstract.substring(2).trim();
+                    }
+                    abstract = decodeLatexAccents(abstract);
+                }
+            } else {
+                // Try \abstract{} format
+                const abstractPos = tex.indexOf("\\abstract{");
+                if (abstractPos !== -1) {
+                    const abstractStart = tex.indexOf("{", abstractPos) + 1;
+                    abstract = decodeLatexAccents(extractBalanced(tex, abstractStart));
+                }
+            }
+
+            const authors = parseAuthors(tex);
+
+            // Merge emails and ORCIDs from comment metadata by full name
+            authors.forEach(a => {
+                const key = (a.fullName || (a.firstName + " " + a.lastName)).trim();
+                const meta = metaByName[key];
+                if (meta) {
+                    if (!a.email) a.email = meta.email || a.email;
+                    a.orcid = meta.orcid || a.orcid || "";
+                    a.country = meta.country || a.country;
+                }
+            });
+
+            const rawAff = extractAffils(tex);
+            const affils = rawAff.map(a => ({
+                index: a.index,
+                ...parseAffiliationBlock(a.fullAddress)
+            }));
+
+            // Extract keywords - support both \keyword{} and \begin{keyword}...\end{keyword}
+            let keywords = "";
+            
+            // Try \begin{keyword}...\end{keyword} format first
+            const beginKeywordPos = tex.indexOf("\\begin{keyword}");
+            if (beginKeywordPos !== -1) {
+                const keywordStart = beginKeywordPos + "\\begin{keyword}".length;
+                const keywordEnd = tex.indexOf("\\end{keyword}", keywordStart);
+                if (keywordEnd !== -1) {
+                    keywords = tex.slice(keywordStart, keywordEnd).trim();
+                }
+            } else {
+                // Try \keyword{} format
+                const keywordPos = tex.indexOf("\\keyword{");
+                if (keywordPos !== -1) {
+                    const keywordStart = tex.indexOf("{", keywordPos) + 1;
+                    keywords = extractBalanced(tex, keywordStart);
+                }
+            }
+            
+            // Convert \sep to semicolons and decode accents
+            if (keywords) {
+                keywords = keywords.replace(/\\sep/g, ";");
+                keywords = decodeLatexAccents(keywords);
+                // Clean up extra spaces around semicolons
+                keywords = keywords.replace(/\s*;\s*/g, "; ").trim();
+            }
+
+            return { title, abstract, authors, affils, keywords };
+        }
+
+        /* ------------------------------
+           Generate a clickable copybox
+        -------------------------------- */
+        function box(value) {
+            return `<span class="copybox" data-copy="${value}">${value}</span>`;
+        }
+
+        /* ------------------------------
+           Generate a truncated copybox
+        -------------------------------- */
+        function boxTruncate(value, displayText) {
+            return `<span class="copybox truncate" data-copy="${value}">${displayText}</span>`;
+        }
+
+        /* ------------------------------
+           Render output
+        -------------------------------- */
+        function extract() {
+            const tex = document.getElementById("texinput").value;
+            const out = document.getElementById("out");
+            out.innerHTML = "";
+
+            const data = parseElsevier(tex);
+
+            /* ---- TITLE ---- */
+            const t = document.createElement("div");
+            t.className = "row";
+            t.innerHTML = `<span class="label">Title: </span>${box(data.title)}`;
+            out.appendChild(t);
+
+            /* ---- ABSTRACT ---- */
+            const abs = document.createElement("div");
+            abs.className = "row";
+            abs.innerHTML = `<span class="label">Abstract: </span><span class="copybox abstract-box" data-copy="${data.abstract}">${data.abstract}</span>`;
+            out.appendChild(abs);
+
+            /* ---- KEYWORDS ---- */
+            if (data.keywords) {
+                const kw = document.createElement("div");
+                kw.className = "row";
+                kw.innerHTML = `<span class="label">Keywords: </span>${box(data.keywords)}`;
+                out.appendChild(kw);
+            }
+
+            /* ---- AFFILIATIONS ---- */
+            const hA = document.createElement("h2");
+            hA.textContent = "Affiliations";
+            out.appendChild(hA);
+
+            data.affils.forEach(aff => {
+                const row = document.createElement("div");
+                row.className = "row";
+
+                let html = `<strong>#${aff.index}</strong><div class="affil-grid" style="display: inline-grid; margin-left: 12px; vertical-align: top;">`;
+
+                // Full address (Elsevier has it as one string)
+                if (aff.fullAddress) {
+                    const displayAddress = aff.fullAddress.length > 60 ? aff.fullAddress.substring(0, 60) + "..." : aff.fullAddress;
+                    html += `<span class="label">Full address:</span> <span>${boxTruncate(aff.fullAddress, displayAddress)}</span>`;
+                }
+
+                if (aff.org) html += `<span class="label">Organization:</span> <span>${box(aff.org)}</span>`;
+                if (aff.country) html += `<span class="label">Country:</span> <span>${box(aff.country)}</span>`;
+
+                html += "</div>";
+                row.innerHTML = html;
+                out.appendChild(row);
+            });
+
+
+            /* ---- AUTHORS ---- */
+            const h = document.createElement("h2");
+            h.textContent = "Authors";
+            out.appendChild(h);
+
+            data.authors.forEach((a, i) => {
+                const affTexts = a.affils.map(idx => {
+                    const af = data.affils.find(x => x.index === idx);
+                    if (!af) return "";
+                    return af.org || "";
+                });
+
+                const row = document.createElement("div");
+                row.className = a.isCorresponding ? "row corresponding" : "row";
+                
+                let html = `<strong>#${i + 1}</strong><div class="affil-grid" style="display: inline-grid; margin-left: 12px; vertical-align: top;">`;
+                
+                if (a.fullName) html += `<span class="label">Full name:</span> <span>${box(a.fullName)}</span>`;
+                html += `<span class="label">Given names:</span> <span>${box(a.firstName || "")}</span>`;
+                html += `<span class="label">Family name:</span> <span>${box(a.lastName || "")}</span>`;
+                if (a.email) html += `<span class="label">Email:</span> <span>${box(a.email)}</span>`;
+                if (a.orcid) html += `<span class="label">ORCID:</span> <span>${box(a.orcid)}</span>`;
+                
+                if (affTexts.length > 0 && affTexts.some(x => x)) {
+                    html += `<span class="label">Primary affiliation:</span> <span>${affTexts.map(x => box(x)).join(" ")}</span>`;
+                }
+                
+                if (a.isCorresponding) {
+                    html += `<span></span> <span><strong style='color: #2e7d32;'>(Corresponding Author)</strong></span>`;
+                }
+                
+                html += "</div>";
+                row.innerHTML = html;
+                out.appendChild(row);
+            });
+        }
+
+        /* ------------------------------
+           Global click handler for copyboxes
+        -------------------------------- */
+        let tooltip = null;
+
+        document.addEventListener("click", e => {
+            if (e.target.classList.contains("copybox")) {
+                const txt = e.target.dataset.copy;
+                navigator.clipboard.writeText(txt);
+                e.target.style.background = "#c9f7c9";
+                setTimeout(() => e.target.style.background = "#e8f0ff", 200);
+            }
+        });
+
+        // Show tooltip on hover
+        document.addEventListener("mouseover", e => {
+            if (e.target.classList.contains("copybox")) {
+                const txt = e.target.dataset.copy;
+                
+                // Create tooltip
+                tooltip = document.createElement("div");
+                tooltip.className = "tooltip";
+                tooltip.textContent = txt;
+                document.body.appendChild(tooltip);
+                
+                // Position tooltip
+                const rect = e.target.getBoundingClientRect();
+                tooltip.style.left = rect.left + "px";
+                tooltip.style.top = (rect.bottom + 5) + "px";
+                
+                // Adjust if tooltip goes off screen
+                const tooltipRect = tooltip.getBoundingClientRect();
+                if (tooltipRect.right > window.innerWidth) {
+                    tooltip.style.left = (window.innerWidth - tooltipRect.width - 10) + "px";
+                }
+                if (tooltipRect.bottom > window.innerHeight) {
+                    tooltip.style.top = (rect.top - tooltipRect.height - 5) + "px";
+                }
+            }
+        });
+
+        // Hide tooltip on mouseout
+        document.addEventListener("mouseout", e => {
+            if (e.target.classList.contains("copybox") && tooltip) {
+                tooltip.remove();
+                tooltip = null;
+            }
+        });
+
+        /* ------------------------------
+           Auto-extract on textarea input
+        -------------------------------- */
+        const textarea = document.getElementById("texinput");
+        
+        // Clear placeholder text on focus
+        textarea.addEventListener("focus", function() {
+            if (this.value === this.getAttribute("placeholder")) {
+                this.value = "";
+            }
+        });
+        
+        // Restore placeholder if empty on blur
+        textarea.addEventListener("blur", function() {
+            if (this.value === "") {
+                this.value = this.getAttribute("placeholder");
+            }
+        });
+        
+        textarea.addEventListener("input", extract);
+
+        /* ------------------------------
+           Prevent accidental page reload
+        -------------------------------- */
+        window.addEventListener("beforeunload", function(e) {
+            const textarea = document.getElementById("texinput");
+            const placeholder = textarea.getAttribute("placeholder");
+            
+            // Only prompt if there's actual content (not just placeholder)
+            // This will trigger browser's default warning dialog
+            if (textarea.value && textarea.value !== placeholder && textarea.value.trim() !== "") {
+                // Modern browsers ignore custom message and show their own
+                // They typically show: "Changes you made may not be saved" or similar
+                e.preventDefault();
+                e.returnValue = ""; // Required for Chrome
+                return ""; // Required for some browsers
+            }
+        });
+    </script>
+
+</body>
+
+</html>
