@@ -313,29 +313,48 @@
         function findSalutationForAuthor(fullText, firstName, lastName) {
             if (!fullText || !lastName) return "";
             
-            // Search for pattern like: "Mr.	LastName" or "Mrs.	Firstname Lastname"
-            const titleRegex = new RegExp("(Mr\\.?|Mrs\\.?|Ms\\.?|Dr\\.?|Prof\\.?)\\s+[^\\t\\n]*?" + lastName, "i");
-            const match = fullText.match(titleRegex);
-            if (match && match[1]) {
-                return match[1].trim();
+            const normLastName = normalizeDiacritics(lastName.toLowerCase());
+            
+            // Search for pattern like: "Mr. LastName" or "Mrs. FirstName LastName"
+            const lines = fullText.split('\n');
+            
+            for (const line of lines) {
+                const normLine = normalizeDiacritics(line.toLowerCase());
+                
+                // Check if this line contains the last name
+                if (normLine.includes(normLastName)) {
+                    // Extract salutation (Mr., Mrs., Ms., Dr., Prof., etc.)
+                    const salutationMatch = line.match(/(Mr\.?|Mrs\.?|Ms\.?|Dr\.?|Prof\.?)\s*/i);
+                    if (salutationMatch && salutationMatch[1]) {
+                        return salutationMatch[1].trim().replace(/\.$/,'');  // Remove trailing dot
+                    }
+                }
             }
             
             return "";
+        }
+
+        /* Remove diacritics for comparison */
+        function normalizeDiacritics(str) {
+            if (!str) return "";
+            return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         }
 
         /* Find email for author by searching full text near author name */
         function findEmailForAuthor(fullText, firstName, lastName) {
             if (!fullText || !firstName || !lastName) return "";
             
-            // Search for the author in lines/comments - look for lines containing both names
+            const normFirstName = normalizeDiacritics(firstName.toLowerCase());
+            const normLastName = normalizeDiacritics(lastName.toLowerCase());
+            
             const lines = fullText.split('\n');
             
             for (const line of lines) {
-                const lineLower = line.toLowerCase();
+                const normLine = normalizeDiacritics(line.toLowerCase());
                 
-                // Check if this line contains both first and last name
-                const hasFirstName = firstName && lineLower.includes(firstName.toLowerCase());
-                const hasLastName = lastName && lineLower.includes(lastName.toLowerCase());
+                // Check if this line contains both first and last name (normalized)
+                const hasFirstName = normFirstName && normLine.includes(normFirstName);
+                const hasLastName = normLastName && normLine.includes(normLastName);
                 
                 if (hasFirstName && hasLastName) {
                     // This line is about this author, extract email from it
@@ -353,15 +372,17 @@
         function findOrcidForAuthor(fullText, firstName, lastName) {
             if (!fullText || !firstName || !lastName) return "";
             
-            // Search line by line for lines containing the author's name
+            const normFirstName = normalizeDiacritics(firstName.toLowerCase());
+            const normLastName = normalizeDiacritics(lastName.toLowerCase());
+            
             const lines = fullText.split('\n');
             
             for (const line of lines) {
-                const lineLower = line.toLowerCase();
+                const normLine = normalizeDiacritics(line.toLowerCase());
                 
-                // Check if this line contains both first and last name
-                const hasFirstName = firstName && lineLower.includes(firstName.toLowerCase());
-                const hasLastName = lastName && lineLower.includes(lastName.toLowerCase());
+                // Check if this line contains both first and last name (normalized)
+                const hasFirstName = normFirstName && normLine.includes(normFirstName);
+                const hasLastName = normLastName && normLine.includes(normLastName);
                 
                 if (hasFirstName && hasLastName) {
                     // This line is about this author, extract ORCID from it

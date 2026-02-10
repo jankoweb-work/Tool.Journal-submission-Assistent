@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Email/ORCID Extraction</title>
+    <style>
+        body { font-family: monospace; background: #f0f0f0; padding: 20px; }
+        .result { background: white; padding: 15px; margin: 10px 0; border-left: 4px solid #0066cc; }
+        .pass { border-left-color: green; }
+        .fail { border-left-color: red; }
+        pre { overflow-x: auto; background: #f5f5f5; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Email/ORCID/Salutation Extraction Test</h1>
+    <div id="results"></div>
+
+    <script>
+        function normalizeDiacritics(str) {
+            if (!str) return "";
+            return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        }
+
+        function findEmailForAuthor(fullText, firstName, lastName) {
+            if (!fullText || !firstName || !lastName) return "";
+            
+            const normFirstName = normalizeDiacritics(firstName.toLowerCase());
+            const normLastName = normalizeDiacritics(lastName.toLowerCase());
+            
+            const lines = fullText.split('\n');
+            
+            for (const line of lines) {
+                const normLine = normalizeDiacritics(line.toLowerCase());
+                
+                const hasFirstName = normFirstName && normLine.includes(normFirstName);
+                const hasLastName = normLastName && normLine.includes(normLastName);
+                
+                if (hasFirstName && hasLastName) {
+                    const emailMatch = line.match(/([a-zA-Z0-9._\-]+@[a-zA-Z0-9.\-]+)/);
+                    if (emailMatch && emailMatch[1]) {
+                        return emailMatch[1].trim();
+                    }
+                }
+            }
+            
+            return "";
+        }
+
+        function findOrcidForAuthor(fullText, firstName, lastName) {
+            if (!fullText || !firstName || !lastName) return "";
+            
+            const normFirstName = normalizeDiacritics(firstName.toLowerCase());
+            const normLastName = normalizeDiacritics(lastName.toLowerCase());
+            
+            const lines = fullText.split('\n');
+            
+            for (const line of lines) {
+                const normLine = normalizeDiacritics(line.toLowerCase());
+                
+                const hasFirstName = normFirstName && normLine.includes(normFirstName);
+                const hasLastName = normLastName && normLine.includes(normLastName);
+                
+                if (hasFirstName && hasLastName) {
+                    const orcidMatch = line.match(/([0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X])/i);
+                    if (orcidMatch && orcidMatch[1]) {
+                        return orcidMatch[1].trim();
+                    }
+                }
+            }
+            
+            return "";
+        }
+
+        function findSalutationForAuthor(fullText, firstName, lastName) {
+            if (!fullText || !lastName) return "";
+            
+            const normLastName = normalizeDiacritics(lastName.toLowerCase());
+            
+            const lines = fullText.split('\n');
+            
+            for (const line of lines) {
+                const normLine = normalizeDiacritics(line.toLowerCase());
+                
+                if (normLine.includes(normLastName)) {
+                    const salutationMatch = line.match(/(Mr\.?|Mrs\.?|Ms\.?|Dr\.?|Prof\.?)\s*/i);
+                    if (salutationMatch && salutationMatch[1]) {
+                        return salutationMatch[1].trim().replace(/\.$/, '');
+                    }
+                }
+            }
+            
+            return "";
+        }
+
+        const fullText = `
+\author[1]{\fnm{Ludmila} \sur{Verešpejová}}
+\author[2]{\fnm{Karel} \sur{Štícha}}
+\author[1]{\fnm{Zuzana} \sur{Urbániová}}
+\author*[2]{\fnm{Jan} \sur{Kohout}}\email{jan.kohout@vscht.cz}
+\author[2,3]{\fnm{Jan} \sur{Mareš}}
+\author[1]{\fnm{Martin} \sur{Chovanec}}
+
+% Mr.	Alan Spark	alan.spark@vscht.cz	0000-0002-5112-4842	Czech Republic
+% Mr.	Karel Štícha	karel.sticha@vscht.cz	0000-0003-0518-4702	Czech Republic
+% Mr.	Jan Kohout	jan.kohout@vscht.cz	0000-0003-1591-2777	Czech Republic
+% Mrs.	Ludmila Verešpejová	ludmila.verespejova@fnkv.cz	0000-0001-6314-8000	Czech Republic
+% Mr.	Martin Chovanec	martin.chovanec@fnkv.cz 	0000-0001-9087-0269	Czech Republic
+% Mr.	Jan Mareš	jan.mares@vscht.cz	0000-0003-4693-2519	Czech Republic
+`;
+
+        const authors = [
+            { first: "Ludmila", last: "Verešpejová", expectedEmail: "ludmila.verespejova@fnkv.cz", expectedOrcid: "0000-0001-6314-8000", expectedSalutation: "Mrs" },
+            { first: "Karel", last: "Štícha", expectedEmail: "karel.sticha@vscht.cz", expectedOrcid: "0000-0003-0518-4702", expectedSalutation: "Mr" },
+            { first: "Zuzana", last: "Urbániová", expectedEmail: "", expectedOrcid: "", expectedSalutation: "" },
+            { first: "Jan", last: "Kohout", expectedEmail: "jan.kohout@vscht.cz", expectedOrcid: "0000-0003-1591-2777", expectedSalutation: "Mr" },
+            { first: "Jan", last: "Mareš", expectedEmail: "jan.mares@vscht.cz", expectedOrcid: "0000-0003-4693-2519", expectedSalutation: "Mr" },
+            { first: "Martin", last: "Chovanec", expectedEmail: "martin.chovanec@fnkv.cz", expectedOrcid: "0000-0001-9087-0269", expectedSalutation: "Mr" },
+        ];
+
+        let html = '';
+        
+        authors.forEach(author => {
+            const email = findEmailForAuthor(fullText, author.first, author.last);
+            const orcid = findOrcidForAuthor(fullText, author.first, author.last);
+            const salutation = findSalutationForAuthor(fullText, author.first, author.last);
+            
+            const emailPass = email === author.expectedEmail;
+            const orcidPass = orcid === author.expectedOrcid;
+            const salutationPass = salutation === author.expectedSalutation;
+            const allPass = emailPass && orcidPass && salutationPass;
+            
+            html += `<div class="result ${allPass ? 'pass' : 'fail'}">
+                <h3>${author.first} ${author.last}</h3>
+                <p><strong>Email:</strong> 
+                    <span style="color: ${emailPass ? 'green' : 'red'}">
+                        ${email || '(empty)'} ${emailPass ? '✓' : '✗ expected: ' + (author.expectedEmail || '(empty)')}
+                    </span>
+                </p>
+                <p><strong>ORCID:</strong> 
+                    <span style="color: ${orcidPass ? 'green' : 'red'}">
+                        ${orcid || '(empty)'} ${orcidPass ? '✓' : '✗ expected: ' + (author.expectedOrcid || '(empty)')}
+                    </span>
+                </p>
+                <p><strong>Salutation:</strong> 
+                    <span style="color: ${salutationPass ? 'green' : 'red'}">
+                        ${salutation || '(empty)'} ${salutationPass ? '✓' : '✗ expected: ' + (author.expectedSalutation || '(empty)')}
+                    </span>
+                </p>
+            </div>`;
+        });
+        
+        document.getElementById('results').innerHTML = html;
+    </script>
+</body>
+</html>
