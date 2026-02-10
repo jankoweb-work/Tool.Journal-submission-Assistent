@@ -294,32 +294,148 @@
             return decodeLatexAccents(extractBalanced(block, start));
         }
 
+        /* Extract ORCID from various formats */
+        function extractOrcid(tex, firstName, lastName) {
+            if (!tex) return "";
+            
+            // Pattern 1: Direct ORCID in author block like \orcid{0000-...}
+            const orcidMatch = tex.match(/\\orcid\{([0-9\-]+)\}/);
+            if (orcidMatch) return orcidMatch[1].trim();
+            
+            // Pattern 2: In href like orcid.org/0000-...
+            const hrefMatch = tex.match(/orcid\.org\/([0-9\-]+)/);
+            if (hrefMatch) return hrefMatch[1].trim();
+            
+            return "";
+        }
+
+        /* Find salutation/title for author by name in comments */
+        function findSalutationForAuthor(fullText, firstName, lastName) {
+            if (!fullText || !lastName) return "";
+            
+            // Search for pattern like: "Mr.	LastName" or "Mrs.	Firstname Lastname"
+            const titleRegex = new RegExp("(Mr\\.?|Mrs\\.?|Ms\\.?|Dr\\.?|Prof\\.?)\\s+[^\\t\\n]*?" + lastName, "i");
+            const match = fullText.match(titleRegex);
+            if (match && match[1]) {
+                return match[1].trim();
+            }
+            
+            return "";
+        }
+
+        /* Find email for author by searching full text near author name */
+        function findEmailForAuthor(fullText, firstName, lastName) {
+            if (!fullText || !firstName || !lastName) return "";
+            
+            // Search for patterns like: "name, email@domain.com" or (name) email@domain.com
+            const parts = [firstName.toLowerCase(), lastName.toLowerCase()];
+            
+            // Pattern 1: Direct pattern "FirstName LastName    email@domain.com"
+            const namePattern = parts.filter(x => x).join(".*");
+            const directRegex = new RegExp(namePattern + ".*?([\\w\\.\\-]+@[\\w\\.\\-]+\\.[a-z]+)", "i");
+            const directMatch = fullText.match(directRegex);
+            if (directMatch && directMatch[1]) {
+                return directMatch[1].trim();
+            }
+            
+            // Pattern 2: "Last, First email@domain.com" or similar variations
+            const lastFirstRegex = new RegExp(lastName + ".*?" + firstName + ".*?([\\w\\.\\-]+@[\\w\\.\\-]+\\.[a-z]+)", "i");
+            const lastFirstMatch = fullText.match(lastFirstRegex);
+            if (lastFirstMatch && lastFirstMatch[1]) {
+                return lastFirstMatch[1].trim();
+            }
+            
+            return "";
+        }
+
+        /* Find ORCID for author by name in comments or text */
+        function findOrcidForAuthor(fullText, firstName, lastName) {
+            if (!fullText || !firstName || !lastName) return "";
+            
+            // Search for pattern like: "LastName \t orcid" or "LastName ... 0000-..."
+            const namePattern = lastName.toLowerCase();
+            const orcidRegex = new RegExp(namePattern + ".*?([0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X])", "i");
+            const match = fullText.match(orcidRegex);
+            if (match && match[1]) {
+                return match[1].trim();
+            }
+            
+            // Alternative pattern: direct ORCID after href
+            const hrefRegex = /orcid\.org\/([0-9\-]{19})/;
+            const hrefMatch = fullText.match(hrefRegex);
+            if (hrefMatch && hrefMatch[1]) {
+                return hrefMatch[1].trim();
+            }
+            
+            return "";
+        }
+
         /* ------------------------------
            Extract authors
         -------------------------------- */
-        function parseAuthors(tex) {
+        function parseAuthors(tex, fullTextWithComments) {
             const authors = [];
-            const regex = /\\author\*?\[([^\]]+)\]\{([\s\S]*?)\}\\email\{([^}]*)\}/g;
-            let m;
+            let pos = 0;
 
-            while ((m = regex.exec(tex))) {
-                const affils = m[1].split(",").map(x => x.trim());
-                const block = m[2];
-                const email = m[3];
+            while (true) {
+                const start = tex.indexOf("\\author", pos);
+                if (start === -1) break;
+
+                // Check for \author* or \author[
+                const isCorresponding = tex[start + 7] === "*";
+                const bracketStart = tex.indexOf("[", start);
+                const bracketEnd = tex.indexOf("]", bracketStart);
+                
+                if (bracketStart === -1 || bracketEnd === -1) break;
+
+                const affils = tex.slice(bracketStart + 1, bracketEnd).split(",").map(x => x.trim());
+                
+                const braceStart = tex.indexOf("{", bracketEnd) + 1;
+                if (braceStart === 0) break;
+                
+                const block = extractBalanced(tex, braceStart);
 
                 const fn = extractFirstName(block);
                 const sn = extractSurname(block);
+
+                // Look for optional \email{...} after the author block (first try direct after })
+                let email = "";
+                const emailPos = braceStart + block.length + 1;
+                const emailMatch = tex.slice(emailPos, emailPos + 200).match(/\\email\{([^}]*)\}/);
+                if (emailMatch) {
+                    email = emailMatch[1].trim();
+                }
                 
-                // Check if this is corresponding author (\corref or \author*)
-                const isCorresponding = block.includes("\\corref") || m[0].includes("\\author*");
+                // If not found, search in full text with comments
+                if (!email && fullTextWithComments) {
+                    email = findEmailForAuthor(fullTextWithComments, fn, sn);
+                }
+
+                // Try to extract ORCID from block
+                let orcid = extractOrcid(block);
+                
+                // If not found, search in full text with comments
+                if (!orcid && fullTextWithComments) {
+                    orcid = findOrcidForAuthor(fullTextWithComments, fn, sn);
+                }
+
+                // Find salutation/title
+                let salutation = "";
+                if (fullTextWithComments) {
+                    salutation = findSalutationForAuthor(fullTextWithComments, fn, sn);
+                }
 
                 authors.push({
                     firstName: fn,
                     lastName: sn,
+                    salutation,
                     email,
+                    orcid,
                     affils,
                     isCorresponding
                 });
+
+                pos = braceStart + block.length;
             }
             return authors;
         }
@@ -371,8 +487,10 @@
         /* ------------------------------
            Main parser
         -------------------------------- */
-        function parseSpringer(tex) {
-            tex = tex.replace(/%.*/g, "");
+        function parseSpringer(texInput) {
+            // Keep full text with comments for email/ORCID extraction
+            const fullTextWithComments = texInput;
+            let tex = texInput.replace(/%.*/g, "");
 
             // Extract title using balanced braces
             let title = "";
@@ -406,7 +524,7 @@
                 }
             }
 
-            const authors = parseAuthors(tex);
+            const authors = parseAuthors(tex, fullTextWithComments);
 
             const rawAff = extractAffils(tex);
             const affils = rawAff.map(a => ({
@@ -509,9 +627,17 @@
                 
                 let html = `<strong>#${i + 1}</strong><div class="affil-grid" style="display: inline-grid; margin-left: 12px; vertical-align: top;">`;
                 
+                if (a.salutation) {
+                    html += `<span class="label">Salutation:</span> <span>${box(a.salutation)}</span>`;
+                }
                 html += `<span class="label">Given names:</span> <span>${box(a.firstName)}</span>`;
                 html += `<span class="label">Family name:</span> <span>${box(a.lastName)}</span>`;
-                html += `<span class="label">Email:</span> <span>${box(a.email)}</span>`;
+                if (a.email) {
+                    html += `<span class="label">Email:</span> <span>${box(a.email)}</span>`;
+                }
+                if (a.orcid) {
+                    html += `<span class="label">ORCID:</span> <span>${box(a.orcid)}</span>`;
+                }
                 
                 if (affTexts.length > 0 && affTexts.some(x => x)) {
                     html += `<span class="label">Primary affiliation:</span> <span>${affTexts.map(x => box(x)).join(" ")}</span>`;
