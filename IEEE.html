@@ -1,0 +1,428 @@
+<!--
+    Universal Data Parser
+    Author: Jan Kohout
+    Email: jan.kohout@vscht.cz
+    Version: 2.0
+    Date: 2025-12-17
+
+    Description:
+    Paste your data (Excel table, CSV) into the input box.
+    Supports: Name; Email; ORCID; Country
+    Click "Extract" to parse data.
+    Any value shown inside a blue box is clickable and copies to clipboard.
+-->
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Universal Data Parser</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 32px;
+            font-weight: 600;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #56ab2f;
+        }
+
+        h2 {
+            margin-top: 32px;
+            margin-bottom: 16px;
+            color: #444;
+            font-size: 24px;
+            font-weight: 600;
+            border-bottom: 3px solid #56ab2f;
+            padding-bottom: 8px;
+        }
+
+        .row {
+            margin: 12px 0;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #56ab2f;
+            line-height: 32px;
+        }
+
+        .row strong {
+            font-weight: 600;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .copybox {
+            padding: 4px 10px;
+            margin: 2px 4px;
+            background: #e8f0ff;
+            border: 1px solid #8fb2ff;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            transition: all 0.2s;
+            vertical-align: middle;
+        }
+
+        .copybox:hover {
+            background: #d9e7ff;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(86, 171, 47, 0.3);
+        }
+
+        .copybox.truncate {
+            max-width: 400px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .abstract-box {
+            display: inline-block;
+            max-width: 100%;
+            white-space: normal;
+            word-wrap: break-word;
+            line-height: 1.6;
+        }
+
+        .smallhint {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        .label {
+            display: inline-block;
+            min-height: 28px;
+            line-height: 28px;
+            vertical-align: middle;
+            font-weight: 600;
+        }
+
+        .tooltip {
+            position: fixed;
+            background: #333;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            max-width: 400px;
+            word-wrap: break-word;
+            z-index: 1000;
+            pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            line-height: 1.4;
+        }
+
+        .author-info {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .author-info strong {
+            color: #333;
+        }
+
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            text-align: center;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .footer a {
+            color: #56ab2f;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        .corresponding {
+            background: #e8f5e9 !important;
+            border-left: 4px solid #2e7d32 !important;
+        }
+
+        .affil-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 8px 16px;
+            align-items: start;
+        }
+
+        .affil-grid > * {
+            min-height: 28px;
+            display: flex;
+            align-items: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Universal Data Parser</h1>
+
+        <div class="author-info">
+            <strong>Author:</strong> Jan Kohout | 
+            <strong>Web:</strong> <a href="https://jankoweb.github.io" target="_blank" style="color: #56ab2f; text-decoration: none;">jankoweb.github.io</a> | 
+            <strong>Last updated:</strong> December 17, 2025
+        </div>
+
+        <div class="smallhint">
+            Simply copy a table from Excel and paste it below. The parser automatically extracts Name, Email, ORCID, and Country fields. Click any blue box to copy its content.
+        </div>
+
+        <textarea id="texinput" placeholder="Ctrl+C Ctrl+V from Excel"></textarea>
+        <br><br>
+
+        <div id="out"></div>
+    </div>
+
+    <script>
+        /* ==============================
+           Parse tabular data (Excel/CSV)
+        ============================== */
+        
+        function parseTableData(input) {
+            const rows = input.trim().split(/\n/);
+            if (rows.length === 0) return [];
+
+            // Detect delimiter: tab, semicolon, or comma
+            const firstLine = rows[0];
+            let delimiter = '\t';
+            if (!firstLine.includes('\t')) {
+                if (firstLine.includes(';')) delimiter = ';';
+                else if (firstLine.includes(',')) delimiter = ',';
+            }
+
+            // Parse header
+            const headerRow = firstLine.split(delimiter).map(cell => cell.trim().toLowerCase());
+            
+            // Find column indices
+            const titleIdx = headerRow.findIndex(h => h.includes('title') || h.includes('oslovení'));
+            const nameIdx = headerRow.findIndex(h => h.includes('name') || h.includes('jméno') || h.includes('příjmení'));
+            const emailIdx = headerRow.findIndex(h => h.includes('email') || h.includes('mail'));
+            const orcidIdx = headerRow.findIndex(h => h.includes('orcid'));
+            const countryIdx = headerRow.findIndex(h => h.includes('country') || h.includes('země'));
+
+            // Parse data rows
+            const authors = [];
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i].trim();
+                if (!row) continue;
+
+                const cells = row.split(delimiter).map(cell => cell.trim());
+                
+                const title = titleIdx !== -1 ? cells[titleIdx] || '' : '';
+                const name = nameIdx !== -1 ? cells[nameIdx] || '' : '';
+                const email = emailIdx !== -1 ? cells[emailIdx] || '' : '';
+                const orcid = orcidIdx !== -1 ? cells[orcidIdx] || '' : '';
+                const country = countryIdx !== -1 ? cells[countryIdx] || '' : '';
+
+                if (name) {
+                    authors.push({ title, name, email, orcid, country });
+                }
+            }
+
+            return authors;
+        }
+
+        /* ==============================
+           Generate a clickable copybox
+        ============================== */
+        function box(value) {
+            if (!value) return '';
+            return `<span class="copybox" data-copy="${value}">${value}</span>`;
+        }
+
+        function boxTruncate(value, maxLen = 25) {
+            if (!value) return '';
+            const display = value.length > maxLen ? value.substring(0, maxLen) + "..." : value;
+            return `<span class="copybox truncate" data-copy="${value}">${display}</span>`;
+        }
+
+        /* ==============================
+           Render output
+        ============================== */
+        function extract() {
+            const input = document.getElementById("texinput").value;
+            const out = document.getElementById("out");
+            out.innerHTML = "";
+
+            if (input === input.getAttribute?.("placeholder") || !input.trim()) {
+                return;
+            }
+
+            const authors = parseTableData(input);
+
+            if (authors.length === 0) {
+                out.innerHTML = '<div class="row" style="color: #999;">No data found. Check format and try again.</div>';
+                return;
+            }
+
+            /* ---- AUTHORS ---- */
+            const h = document.createElement("h2");
+            h.textContent = `Authors (${authors.length})`;
+            out.appendChild(h);
+
+            authors.forEach((author, i) => {
+                const row = document.createElement("div");
+                row.className = "row";
+                
+                let html = `<strong>#${i + 1}</strong> `;
+                
+                if (author.title) {
+                    html += box(author.title) + ` `;
+                }
+                
+                html += box(author.name);
+                
+                if (author.email) {
+                    html += ` ` + box(author.email);
+                }
+                
+                if (author.orcid) {
+                    html += ` ` + box(author.orcid);
+                }
+                
+                if (author.country) {
+                    html += ` ` + box(author.country);
+                }
+                
+                row.innerHTML = html;
+                out.appendChild(row);
+            });
+        }
+
+        /* ==============================
+           Global click handler for copyboxes
+        ============================== */
+        let tooltip = null;
+
+        document.addEventListener("click", e => {
+            if (e.target.classList.contains("copybox")) {
+                const txt = e.target.dataset.copy;
+                navigator.clipboard.writeText(txt);
+                e.target.style.background = "#c9f7c9";
+                setTimeout(() => e.target.style.background = "#e8f0ff", 200);
+            }
+        });
+
+        // Show tooltip on hover
+        document.addEventListener("mouseover", e => {
+            if (e.target.classList.contains("copybox")) {
+                const txt = e.target.dataset.copy;
+                
+                tooltip = document.createElement("div");
+                tooltip.className = "tooltip";
+                tooltip.textContent = txt;
+                document.body.appendChild(tooltip);
+                
+                const rect = e.target.getBoundingClientRect();
+                tooltip.style.left = rect.left + "px";
+                tooltip.style.top = (rect.bottom + 5) + "px";
+                
+                const tooltipRect = tooltip.getBoundingClientRect();
+                if (tooltipRect.right > window.innerWidth) {
+                    tooltip.style.left = (window.innerWidth - tooltipRect.width - 10) + "px";
+                }
+                if (tooltipRect.bottom > window.innerHeight) {
+                    tooltip.style.top = (rect.top - tooltipRect.height - 5) + "px";
+                }
+            }
+        });
+
+        // Hide tooltip on mouseout
+        document.addEventListener("mouseout", e => {
+            if (e.target.classList.contains("copybox") && tooltip) {
+                tooltip.remove();
+                tooltip = null;
+            }
+        });
+
+        /* ==============================
+           Auto-extract on textarea input
+        ============================== */
+        const textarea = document.getElementById("texinput");
+        
+        textarea.addEventListener("focus", function() {
+            if (this.value === this.getAttribute("placeholder")) {
+                this.value = "";
+            }
+        });
+        
+        textarea.addEventListener("blur", function() {
+            if (this.value === "") {
+                this.value = this.getAttribute("placeholder");
+            }
+        });
+        
+        textarea.addEventListener("input", extract);
+
+        /* ==============================
+           Prevent accidental page reload
+        ============================== */
+        window.addEventListener("beforeunload", function(e) {
+            const textarea = document.getElementById("texinput");
+            const placeholder = textarea.getAttribute("placeholder");
+            
+            if (textarea.value && textarea.value !== placeholder && textarea.value.trim() !== "") {
+                e.preventDefault();
+                e.returnValue = "";
+                return "";
+            }
+        });
+    </script>
+
+</body>
+
+</html>

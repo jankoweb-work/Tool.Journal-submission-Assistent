@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>LaTeX accent test</title>
+</head>
+<body>
+
+<pre id="out"></pre>
+
+<script>
+function decodeLatexAccents(str) {
+    if (!str) return "";
+
+    const map = {
+        "\\v{s}": "š", "\\v{S}": "Š",
+        "\\v{c}": "č", "\\v{C}": "Č",
+        "\\v{z}": "ž", "\\v{Z}": "Ž",
+        "\\v{e}": "ě", "\\v{E}": "Ě",
+        "\\v{n}": "ň", "\\v{N}": "Ň",
+        "\\v{r}": "ř", "\\v{R}": "Ř",
+        "\\v{t}": "ť", "\\v{T}": "Ť",
+
+        "\\'{a}": "á", "\\'{A}": "Á",
+        "\\'{e}": "é", "\\'{E}": "É",
+        "\\'{i}": "í", "\\'{I}": "Í",
+        "\\'{o}": "ó", "\\'{O}": "Ó",
+        "\\'{u}": "ú", "\\'{U}": "Ú",
+        "\\'{y}": "ý", "\\'{Y}": "Ý",
+
+        "\\r{u}": "ů", "\\r{U}": "Ů"
+    };
+
+    for (const key in map) {
+        str = str.replaceAll(key, map[key]);
+    }
+
+    return str;
+}
+
+// LaTeX zápis jména – pozor: v JS stringu musí být backslash zdvojený
+const input = "Vere\\v{s}pejov\\'{a}";
+const output = decodeLatexAccents(input);
+
+document.getElementById("out").textContent =
+    "input:  " + input + "\n" +
+    "output: " + output;
+</script>
+
+</body>
+</html>
