@@ -289,7 +289,22 @@
                 "\\\\'y": "ý", "\\\\'Y": "Ý",
 
                 "\\r{u}": "ů", "\\r{U}": "Ů",
-                "\\\\r{u}": "ů", "\\\\r{U}": "Ů"
+                "\\\\r{u}": "ů", "\\\\r{U}": "Ů",
+                "\\v{d}": "ď", "\\v{D}": "Ď",
+                "\\\\v{d}": "ď", "\\\\v{D}": "Ď",
+                "\\v s": "š", "\\v S": "Š",
+                "\\v c": "č", "\\v C": "Č",
+                "\\v z": "ž", "\\v Z": "Ž",
+                "\\v e": "ě", "\\v E": "Ě",
+                "\\v n": "ň", "\\v N": "Ň",
+                "\\v r": "ř", "\\v R}": "Ř",
+                "\\v t": "ť", "\\v T": "Ť",
+                "\\'a": "á", "\\'A": "Á",
+                "\\'e": "é", "\\'E": "É",
+                "\\'i": "í", "\\'I": "Í",
+                "\\'o": "ó", "\\'O": "Ó",
+                "\\'u": "ú", "\\'U": "Ú",
+                "\\'y": "ý", "\\'Y": "Ý"
             };
 
             for (const key in map) {
@@ -309,14 +324,15 @@
             return s;
         }
 
-        // Normalize human name for matching: remove honorifics, decode accents, lowercase
+        // Normalize human name for matching: remove honorifics, decode accents, remove non-letters, lowercase
         function normalizePersonName(name){
             if(!name) return "";
-            name = name.replace(/^\s*(Mr|Mrs|Ms|Dr|Prof)\.\s+/i, "");
+            // Remove honorifics like Mr., Mrs., Dr., etc.
+            name = name.replace(/^\s*(Mr|Mrs|Ms|Dr|Prof|Title)\.?:?\s+/i, "");
             name = decodeLatexAccents(name);
             name = name.normalize('NFC');
-            name = name.replace(/[^\p{L}\p{N}\s'-]/gu, ''); // remove punctuation except hyphen and apostrophe
-            name = name.replace(/\s+/g,' ').trim().toLowerCase();
+            // For matching, keep only letters and numbers, then lowercase
+            name = name.replace(/[^\p{L}\p{N}]/gu, '').toLowerCase();
             return name;
         }
 
@@ -672,13 +688,18 @@
 
                 let html = `<strong>#${aff.index}</strong><div class="affil-grid" style="display: inline-grid; margin-left: 12px; vertical-align: top;">`;
 
-                // Full address (Elsevier has it as one string)
-                if (aff.fullAddress) {
+                // Full address (if available as a single string)
+                if (aff.fullAddress && !aff.org) {
                     const displayAddress = aff.fullAddress.length > 60 ? aff.fullAddress.substring(0, 60) + "..." : aff.fullAddress;
                     html += `<span class="label">Full address:</span> <span>${boxTruncate(aff.fullAddress, displayAddress)}</span>`;
                 }
 
                 if (aff.org) html += `<span class="label">Organization:</span> <span>${box(aff.org)}</span>`;
+                if (aff.dep) html += `<span class="label">Department:</span> <span>${box(aff.dep)}</span>`;
+                if (aff.street) html += `<span class="label">Addressline:</span> <span>${box(aff.street)}</span>`;
+                if (aff.city) html += `<span class="label">City:</span> <span>${box(aff.city)}</span>`;
+                if (aff.postcode) html += `<span class="label">Postcode:</span> <span>${box(aff.postcode)}</span>`;
+                if (aff.state) html += `<span class="label">State:</span> <span>${box(aff.state)}</span>`;
                 if (aff.country) html += `<span class="label">Country:</span> <span>${box(aff.country)}</span>`;
 
                 html += "</div>";
