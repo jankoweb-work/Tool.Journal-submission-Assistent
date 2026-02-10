@@ -327,22 +327,23 @@
         function findEmailForAuthor(fullText, firstName, lastName) {
             if (!fullText || !firstName || !lastName) return "";
             
-            // Search for patterns like: "name, email@domain.com" or (name) email@domain.com
-            const parts = [firstName.toLowerCase(), lastName.toLowerCase()];
+            // Search for the author in lines/comments - look for lines containing both names
+            const lines = fullText.split('\n');
             
-            // Pattern 1: Direct pattern "FirstName LastName    email@domain.com"
-            const namePattern = parts.filter(x => x).join(".*");
-            const directRegex = new RegExp(namePattern + ".*?([\\w\\.\\-]+@[\\w\\.\\-]+\\.[a-z]+)", "i");
-            const directMatch = fullText.match(directRegex);
-            if (directMatch && directMatch[1]) {
-                return directMatch[1].trim();
-            }
-            
-            // Pattern 2: "Last, First email@domain.com" or similar variations
-            const lastFirstRegex = new RegExp(lastName + ".*?" + firstName + ".*?([\\w\\.\\-]+@[\\w\\.\\-]+\\.[a-z]+)", "i");
-            const lastFirstMatch = fullText.match(lastFirstRegex);
-            if (lastFirstMatch && lastFirstMatch[1]) {
-                return lastFirstMatch[1].trim();
+            for (const line of lines) {
+                const lineLower = line.toLowerCase();
+                
+                // Check if this line contains both first and last name
+                const hasFirstName = firstName && lineLower.includes(firstName.toLowerCase());
+                const hasLastName = lastName && lineLower.includes(lastName.toLowerCase());
+                
+                if (hasFirstName && hasLastName) {
+                    // This line is about this author, extract email from it
+                    const emailMatch = line.match(/([a-zA-Z0-9._\-]+@[a-zA-Z0-9.\-]+)/);
+                    if (emailMatch && emailMatch[1]) {
+                        return emailMatch[1].trim();
+                    }
+                }
             }
             
             return "";
@@ -352,15 +353,26 @@
         function findOrcidForAuthor(fullText, firstName, lastName) {
             if (!fullText || !firstName || !lastName) return "";
             
-            // Search for pattern like: "LastName \t orcid" or "LastName ... 0000-..."
-            const namePattern = lastName.toLowerCase();
-            const orcidRegex = new RegExp(namePattern + ".*?([0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X])", "i");
-            const match = fullText.match(orcidRegex);
-            if (match && match[1]) {
-                return match[1].trim();
+            // Search line by line for lines containing the author's name
+            const lines = fullText.split('\n');
+            
+            for (const line of lines) {
+                const lineLower = line.toLowerCase();
+                
+                // Check if this line contains both first and last name
+                const hasFirstName = firstName && lineLower.includes(firstName.toLowerCase());
+                const hasLastName = lastName && lineLower.includes(lastName.toLowerCase());
+                
+                if (hasFirstName && hasLastName) {
+                    // This line is about this author, extract ORCID from it
+                    const orcidMatch = line.match(/([0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X])/i);
+                    if (orcidMatch && orcidMatch[1]) {
+                        return orcidMatch[1].trim();
+                    }
+                }
             }
             
-            // Alternative pattern: direct ORCID after href
+            // Alternative: search in href for direct ORCID link
             const hrefRegex = /orcid\.org\/([0-9\-]{19})/;
             const hrefMatch = fullText.match(hrefRegex);
             if (hrefMatch && hrefMatch[1]) {
