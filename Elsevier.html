@@ -238,6 +238,9 @@
         function decodeLatexAccents(str) {
             if (!str) return "";
 
+            // Normalize some common mistaken placements like: t'\{i}  -> t\\'{i}
+            str = normalizeLatexNotation(str);
+
             const map = {
                 "\\v{s}": "š", "\\v{S}": "Š",
                 "\\v{c}": "č", "\\v{C}": "Č",
@@ -246,6 +249,7 @@
                 "\\v{n}": "ň", "\\v{N}": "Ň",
                 "\\v{r}": "ř", "\\v{R}": "Ř",
                 "\\v{t}": "ť", "\\v{T}": "Ť",
+                "\\v{d}": "ď", "\\v{D}": "Ď",
 
                 "\\'{a}": "á", "\\'{A}": "Á",
                 "\\'{e}": "é", "\\'{E}": "É",
@@ -268,6 +272,7 @@
                 "\\\\v{n}": "ň", "\\\\v{N}": "Ň",
                 "\\\\v{r}": "ř", "\\\\v{R}": "Ř",
                 "\\\\v{t}": "ť", "\\\\v{T}": "Ť",
+                "\\\\v{d}": "ď", "\\\\v{D}": "Ď",
 
                 "\\\\'{a}": "á", "\\\\'{A}": "Á",
                 "\\\\'{e}": "é", "\\\\'{E}": "É",
@@ -291,7 +296,28 @@
                 str = str.replaceAll(key, map[key]);
             }
 
-            return str;
+            return str.normalize('NFC');
+        }
+
+        // Normalize variant LaTeX notations to canonical forms
+        function normalizeLatexNotation(s){
+            if(!s) return s;
+            // move stray apostrophe before brace: t'\{i} -> t\\'{i}
+            s = s.replace(/([A-Za-z])'\\\{([A-Za-z])\\\}/g, "$1\\\\'{$2}");
+            // simple variant: e.g. t'í -> t\\'i
+            s = s.replace(/([A-Za-z])'([A-Za-z])/g, "$1\\\\'$2");
+            return s;
+        }
+
+        // Normalize human name for matching: remove honorifics, decode accents, lowercase
+        function normalizePersonName(name){
+            if(!name) return "";
+            name = name.replace(/^\s*(Mr|Mrs|Ms|Dr|Prof)\.\s+/i, "");
+            name = decodeLatexAccents(name);
+            name = name.normalize('NFC');
+            name = name.replace(/[^\p{L}\p{N}\s'-]/gu, ''); // remove punctuation except hyphen and apostrophe
+            name = name.replace(/\s+/g,' ').trim().toLowerCase();
+            return name;
         }
 
         /* ------------------------------
@@ -338,18 +364,18 @@
                     continue;
                 }
 
-                // Data rows are tab-separated; if no headers, assume fixed order
-                const cols = raw.split(/\t+/);
-                if (cols.length < 3) continue;
-
-                const title = cols[0] || "";
-                const name = (cols[1] || "").trim();
-                const email = (cols[2] || "").trim();
-                const orcid = (cols[3] || "").trim();
-                const country = (cols[4] || "").trim();
-
+                // Split flexibly and detect email/orcid tokens
+                const cols = raw.split(/\t+|\s+/);
+                const emailIdx = cols.findIndex(c => /@/.test(c));
+                const orcidIdx = cols.findIndex(c => /^\d{4}-\d{4}-\d{4}-\d{4}$/.test(c));
+                if (emailIdx === -1) continue;
+                const email = cols[emailIdx] || "";
+                const orcid = orcidIdx !== -1 ? cols[orcidIdx] : "";
+                const nameTokens = cols.slice(0, emailIdx);
+                let name = nameTokens.join(' ').replace(/^\s*(Title|Mr|Mrs|Ms|Dr|Prof)\.?:?\s*/i, '').trim();
                 if (!name) continue;
-                map[name] = { title, email, orcid, country };
+                const norm = normalizePersonName(name);
+                map[norm] = { title: '', email, orcid, country: '' };
             }
 
             return map;
@@ -370,27 +396,19 @@
                 correspondingIds.add(corMatch[1].trim());
             }
 
-            // Walk through occurrences of "\\author[...]{...}" and extract using balanced braces
-            let pos = 0;
-            while (true) {
-                const start = tex.indexOf("\\author[", pos);
-                if (start === -1) break;
-
-                const bracketStart = start + "\\author[".length;
-                const bracketEnd = tex.indexOf("]", bracketStart);
-                if (bracketEnd === -1) break;
-
-                const refs = tex.slice(bracketStart, bracketEnd).split(",").map(x => x.trim());
-
-                // Find the opening brace for the author block and extract balanced content
-                const braceStart = tex.indexOf("{", bracketEnd) + 1;
-                if (braceStart === 0) break;
+            // Walk through occurrences of "\\author" and extract using balanced braces
+            const authorRegex = /\\author\*?\s*(?:\[([^\]]*)\])?\s*\{/g;
+            let match;
+            while ((match = authorRegex.exec(tex))) {
+                const refs = match[1] ? match[1].split(',').map(x => x.trim()).filter(Boolean) : [];
+                const braceStart = authorRegex.lastIndex;
                 const block = extractBalanced(tex, braceStart);
 
-                const fullName = decodeLatexAccents(block.trim());
-                const name = splitName(fullName);
+                // decode and split name
+                const fullName = decodeLatexAccents(block.replace(/\\corref\{[^}]*\}/g,'').trim());
+                const nameParts = splitName(fullName);
 
-                // Check inline corresponding markers within author block
+                // corresponding detection
                 const cormarkIds = Array.from(block.matchAll(/\\cormark\[([^\]]+)\]/g)).map(x => x[1].trim());
                 const correfIds = Array.from(block.matchAll(/\\corref\{([^}]+)\}/g)).map(x => x[1].trim());
 
@@ -398,31 +416,38 @@
                 if (cormarkIds.some(id => correspondingIds.has(id))) isCorresponding = true;
                 if (!isCorresponding && correfIds.some(id => correspondingIds.has(id))) isCorresponding = true;
                 if (!isCorresponding) {
-                    isCorresponding = refs.some(ref => correspondingIds.has(ref) || ref.startsWith("cor"));
+                    isCorresponding = refs.some(ref => correspondingIds.has(ref) || ref.toLowerCase().startsWith('cor'));
                 }
 
-                // Keep only numeric refs as affiliations
+                // affiliation refs: only numeric indices
                 const affils = refs.filter(ref => /^\d+$/.test(ref));
 
+                // try inline \email immediately after block
+                let email = "";
+                const afterIdx = braceStart + block.length + 1;
+                const afterSlice = tex.slice(afterIdx, afterIdx + 500); // larger slice to skip potential spaces/comments
+                const ema = afterSlice.match(/\\email\{([^}]+)\}/);
+                if (ema) email = ema[1].trim();
+
                 authors.push({
-                    firstName: name.first,
-                    lastName: name.last,
-                    email: "",
+                    firstName: nameParts.first,
+                    lastName: nameParts.last,
+                    email: email,
                     affils,
                     isCorresponding,
-                    fullName
+                    fullName: fullName
                 });
 
-                // Move position forward past this author block
-                pos = braceStart + block.length + 1;
+                // update lastIndex to skip the processed block
+                authorRegex.lastIndex = braceStart + block.length + 1;
             }
 
-            // Extract emails - \ead{email}
+            // also support legacy \ead{...} sequential emails (fall-back)
             const emailRegex = /\\ead\{([^}]+)\}/g;
             let emailIndex = 0;
             let emailMatch;
             while ((emailMatch = emailRegex.exec(tex)) && emailIndex < authors.length) {
-                authors[emailIndex].email = emailMatch[1];
+                if (!authors[emailIndex].email) authors[emailIndex].email = emailMatch[1];
                 emailIndex++;
             }
 
@@ -430,38 +455,28 @@
         }
 
         /* ------------------------------
-           Extract affiliations (Elsevier: \address)
+           Extract affiliations (Elsevier: \address, \affiliation, \affil)
         -------------------------------- */
         function extractAffils(tex) {
             const out = [];
-            let pos = 0;
+            const affilRegex = /\\(?:address|affil(?:iation)?)\*?\s*(?:\[([^\]]*)\])?\s*\{/g;
+            let m;
+            while ((m = affilRegex.exec(tex))) {
+                const index = (m[1] || "").trim();
+                const braceStart = affilRegex.lastIndex;
+                const rawBlock = extractBalanced(tex, braceStart);
 
-            while (true) {
-                const start = tex.indexOf("\\address[", pos);
-                if (start === -1) break;
+                // if block contains key={...} pairs treat as structured, otherwise decode as fullAddress
+                const hasKV = /[a-zA-Z0-9_\-]+\s*=\s*\{/.test(rawBlock);
 
-                // Extract index from [1], [2], etc.
-                const bracketStart = start + "\\address[".length;
-                const bracketEnd = tex.indexOf("]", bracketStart);
-                if (bracketEnd === -1) break;
-                
-                const index = tex.slice(bracketStart, bracketEnd).trim();
-
-                // Extract content using balanced braces
-                const braceStart = tex.indexOf("{", bracketEnd) + 1;
-                if (braceStart === 0) break;
-                
-                // Extract raw text first (before decoding)
-                const rawAddress = extractBalanced(tex, braceStart);
-                const fullAddress = decodeLatexAccents(rawAddress);
-
-                out.push({ 
-                    index, 
-                    fullAddress
+                out.push({
+                    index,
+                    rawBlock,
+                    fullAddress: hasKV ? "" : decodeLatexAccents(rawBlock)
                 });
-                
-                // Move position forward past this address
-                pos = braceStart + rawAddress.length + 1;
+
+                // update lastIndex
+                affilRegex.lastIndex = braceStart + rawBlock.length + 1;
             }
 
             return out;
@@ -471,15 +486,34 @@
            Parse affiliation (Elsevier: simple text)
         -------------------------------- */
         function parseAffiliationBlock(fullAddress) {
-            // Try to extract parts from comma-separated address
-            const parts = fullAddress.split(",").map(p => p.trim());
-            
-            // Simple heuristic: last is often country
+            // If input looks like a raw block with key={...} pairs, parse those
+            if (fullAddress && fullAddress.includes("=")) {
+                const kv = {};
+                const kvRegex = /([a-zA-Z0-9_\-]+)\s*=\s*\{([\s\S]*?)\}/g;
+                let m;
+                while ((m = kvRegex.exec(fullAddress))) {
+                    kv[m[1].trim()] = decodeLatexAccents(m[2].trim());
+                }
+
+                return {
+                    fullAddress: Object.values(kv).join(", ") || "",
+                    org: kv.organization || kv.org || kv.orgname || "",
+                    country: kv.country || "",
+                    dep: kv.department || kv.dep || "",
+                    street: kv.addressline || kv.street || "",
+                    city: kv.city || "",
+                    postcode: kv.postcode || kv.zip || "",
+                    state: kv.state || ""
+                };
+            }
+
+            // Fallback: try to parse comma-separated plain address
+            const parts = (fullAddress || "").split(",").map(p => p.trim()).filter(Boolean);
             const country = parts.length > 0 ? parts[parts.length - 1] : "";
             const org = parts.length > 0 ? parts[0] : "";
-            
+
             return {
-                fullAddress,
+                fullAddress: fullAddress || "",
                 org,
                 country,
                 dep: "",
@@ -537,7 +571,8 @@
             // Merge emails and ORCIDs from comment metadata by full name
             authors.forEach(a => {
                 const key = (a.fullName || (a.firstName + " " + a.lastName)).trim();
-                const meta = metaByName[key];
+                const norm = normalizePersonName(key);
+                const meta = metaByName[norm];
                 if (meta) {
                     if (!a.email) a.email = meta.email || a.email;
                     a.orcid = meta.orcid || a.orcid || "";
@@ -548,7 +583,7 @@
             const rawAff = extractAffils(tex);
             const affils = rawAff.map(a => ({
                 index: a.index,
-                ...parseAffiliationBlock(a.fullAddress)
+                ...parseAffiliationBlock(a.fullAddress || a.rawBlock)
             }));
 
             // Extract keywords - support both \keyword{} and \begin{keyword}...\end{keyword}
