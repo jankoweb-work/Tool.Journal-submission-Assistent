@@ -254,7 +254,37 @@
                 "\\'{u}": "ú", "\\'{U}": "Ú",
                 "\\'{y}": "ý", "\\'{Y}": "Ý",
 
-                "\\r{u}": "ů", "\\r{U}": "Ů"
+                "\\'a": "á", "\\'A": "Á",
+                "\\'e": "é", "\\'E": "É",
+                "\\'i": "í", "\\'I": "Í",
+                "\\'o": "ó", "\\'O": "Ó",
+                "\\'u": "ú", "\\'U": "Ú",
+                "\\'y": "ý", "\\'Y": "Ý",
+
+                "\\\\v{s}": "š", "\\\\v{S}": "Š",
+                "\\\\v{c}": "č", "\\\\v{C}": "Č",
+                "\\\\v{z}": "ž", "\\\\v{Z}": "Ž",
+                "\\\\v{e}": "ě", "\\\\v{E}": "Ě",
+                "\\\\v{n}": "ň", "\\\\v{N}": "Ň",
+                "\\\\v{r}": "ř", "\\\\v{R}": "Ř",
+                "\\\\v{t}": "ť", "\\\\v{T}": "Ť",
+
+                "\\\\'{a}": "á", "\\\\'{A}": "Á",
+                "\\\\'{e}": "é", "\\\\'{E}": "É",
+                "\\\\'{i}": "í", "\\\\'{I}": "Í",
+                "\\\\'{o}": "ó", "\\\\'{O}": "Ó",
+                "\\\\'{u}": "ú", "\\\\'{U}": "Ú",
+                "\\\\'{y}": "ý", "\\\\'{Y}": "Ý",
+
+                "\\\\'a": "á", "\\\\'A": "Á",
+                "\\\\'e": "é", "\\\\'E": "É",
+                "\\\\'i": "í", "\\\\'I": "Í",
+                "\\\\'o": "ó", "\\\\'O": "Ó",
+                "\\\\'u": "ú", "\\\\'U": "Ú",
+                "\\\\'y": "ý", "\\\\'Y": "Ý",
+
+                "\\r{u}": "ů", "\\r{U}": "Ů",
+                "\\\\r{u}": "ů", "\\\\r{U}": "Ů"
             };
 
             for (const key in map) {
@@ -327,10 +357,11 @@
 
         /* ------------------------------
            Extract authors (Elsevier format)
+           Uses balanced-brace parsing so nested LaTeX commands don't break extraction
         -------------------------------- */
         function parseAuthors(tex) {
             const authors = [];
-            
+
             // Collect corresponding IDs from \cortext[...] and also accept 'cor...' tokens
             const correspondingIds = new Set();
             const cortextRegex = /\\cortext\[([^\]]+)\]/g;
@@ -339,13 +370,23 @@
                 correspondingIds.add(corMatch[1].trim());
             }
 
-            // Match: \author[affil]{Name} or \author[affil,cor1]{Name}
-            const authorRegex = /\\author\[([^\]]+)\]\{([^}]+)\}/g;
-            let m;
+            // Walk through occurrences of "\\author[...]{...}" and extract using balanced braces
+            let pos = 0;
+            while (true) {
+                const start = tex.indexOf("\\author[", pos);
+                if (start === -1) break;
 
-            while ((m = authorRegex.exec(tex))) {
-                const refs = m[1].split(",").map(x => x.trim());
-                const block = m[2];
+                const bracketStart = start + "\\author[".length;
+                const bracketEnd = tex.indexOf("]", bracketStart);
+                if (bracketEnd === -1) break;
+
+                const refs = tex.slice(bracketStart, bracketEnd).split(",").map(x => x.trim());
+
+                // Find the opening brace for the author block and extract balanced content
+                const braceStart = tex.indexOf("{", bracketEnd) + 1;
+                if (braceStart === 0) break;
+                const block = extractBalanced(tex, braceStart);
+
                 const fullName = decodeLatexAccents(block.trim());
                 const name = splitName(fullName);
 
@@ -356,7 +397,6 @@
                 let isCorresponding = false;
                 if (cormarkIds.some(id => correspondingIds.has(id))) isCorresponding = true;
                 if (!isCorresponding && correfIds.some(id => correspondingIds.has(id))) isCorresponding = true;
-                // Fallback: if any ref equals a corresponding id or is 'cor*'
                 if (!isCorresponding) {
                     isCorresponding = refs.some(ref => correspondingIds.has(ref) || ref.startsWith("cor"));
                 }
@@ -372,8 +412,11 @@
                     isCorresponding,
                     fullName
                 });
+
+                // Move position forward past this author block
+                pos = braceStart + block.length + 1;
             }
-            
+
             // Extract emails - \ead{email}
             const emailRegex = /\\ead\{([^}]+)\}/g;
             let emailIndex = 0;
@@ -715,7 +758,14 @@
         });
         
         textarea.addEventListener("input", extract);
+        textarea.addEventListener("paste", extract);
 
+        /* ------------------------------
+           Call extract if there's content on load
+        -------------------------------- */
+        if (textarea.value && textarea.value !== textarea.getAttribute("placeholder")) {
+            extract();
+        }
         /* ------------------------------
            Prevent accidental page reload
         -------------------------------- */
