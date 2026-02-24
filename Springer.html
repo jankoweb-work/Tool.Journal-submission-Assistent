@@ -299,19 +299,50 @@
         -------------------------------- */
         function parseAuthors(tex) {
             const authors = [];
-            const regex = /\\author\*?\[([^\]]+)\]\{([\s\S]*?)\}\\email\{([^}]*)\}/g;
-            let m;
+            let pos = 0;
 
-            while ((m = regex.exec(tex))) {
-                const affils = m[1].split(",").map(x => x.trim());
-                const block = m[2];
-                const email = m[3];
+            while (true) {
+                // Find next \author command
+                const authorStart = tex.indexOf("\\author", pos);
+                if (authorStart === -1) break;
+
+                // Check if it's \author*
+                const isStar = tex[authorStart + 7] === "*";
+                const afterAuthor = authorStart + (isStar ? 8 : 7);
+
+                // Extract affiliation numbers [1,2,3]
+                const affilMatch = tex.slice(afterAuthor).match(/^\[([^\]]+)\]/);
+                if (!affilMatch) {
+                    pos = afterAuthor;
+                    continue;
+                }
+                const affils = affilMatch[1].split(",").map(x => x.trim());
+
+                // Find the opening brace after affiliation
+                const bracePos = afterAuthor + affilMatch[0].length;
+                if (tex[bracePos] !== "{") {
+                    pos = bracePos;
+                    continue;
+                }
+
+                // Extract the balanced author block
+                const block = extractBalanced(tex, bracePos + 1);
+
+                // Find the next \email command
+                const searchStart = bracePos + block.length + 1;
+                const emailMatch = tex.slice(searchStart).match(/\\email\{([^}]*)\}/);
+                if (!emailMatch) {
+                    pos = searchStart;
+                    continue;
+                }
+                const email = emailMatch[1];
 
                 const fn = extractFirstName(block);
                 const sn = extractSurname(block);
                 
-                // Check if this is corresponding author (\corref or \author*)
-                const isCorresponding = block.includes("\\corref") || m[0].includes("\\author*");
+                // Check if this is corresponding author
+                const fullMatch = tex.slice(authorStart, searchStart + emailMatch.index + emailMatch[0].length);
+                const isCorresponding = block.includes("\\corref") || isStar;
 
                 authors.push({
                     firstName: fn,
@@ -320,6 +351,8 @@
                     affils,
                     isCorresponding
                 });
+
+                pos = searchStart + emailMatch.index + emailMatch[0].length;
             }
             return authors;
         }
@@ -464,27 +497,22 @@
 
                 let html = `<strong>#${aff.index}</strong><div class="affil-grid" style="display: inline-grid; margin-left: 12px; vertical-align: top;">`;
 
-                // Full name of workplace
-                const fullName = [aff.dep, aff.org].filter(Boolean).join(", ");
-                if (fullName) {
-                    const displayName = fullName.length > 20 ? fullName.substring(0, 20) + "..." : fullName;
-                    html += `<span class="label">Full name:</span> <span>${boxTruncate(fullName, displayName)}</span>`;
+                // Institution name (organization or department)
+                const instName = aff.org || aff.dep;
+                if (instName) {
+                    html += `<span class="label">Institution name:</span> <span>${box(instName)}</span>`;
                 }
 
-                // Full address
-                const fullAddress = [aff.street, aff.city, aff.postcode, aff.state, aff.country].filter(Boolean).join(", ");
-                if (fullAddress) {
-                    const displayAddress = fullAddress.length > 20 ? fullAddress.substring(0, 20) + "..." : fullAddress;
-                    html += `<span class="label">Full address:</span> <span>${boxTruncate(fullAddress, displayAddress)}</span>`;
-                }
+                // Institution city
+                if (aff.city) html += `<span class="label">Institution city:</span> <span>${box(aff.city)}</span>`;
 
-                if (aff.dep) html += `<span class="label">Department:</span> <span>${box(aff.dep)}</span>`;
-                if (aff.org) html += `<span class="label">Organization:</span> <span>${box(aff.org)}</span>`;
-                if (aff.city) html += `<span class="label">City:</span> <span>${box(aff.city)}</span>`;
-                if (aff.country) html += `<span class="label">Country:</span> <span>${box(aff.country)}</span>`;
-                if (aff.state) html += `<span class="label">State:</span> <span>${box(aff.state)}</span>`;
-                if (aff.postcode) html += `<span class="label">Postcode:</span> <span>${box(aff.postcode)}</span>`;
-                if (aff.street) html += `<span class="label">Street:</span> <span>${box(aff.street)}</span>`;
+                // Institution country/territory
+                if (aff.country) html += `<span class="label">Institution country/territory:</span> <span>${box(aff.country)}</span>`;
+
+                // Institution details (department if organization exists)
+                if (aff.dep && aff.org) {
+                    html += `<span class="label">Institution details:</span> <span>${box(aff.dep)}</span>`;
+                }
 
                 html += "</div>";
                 row.innerHTML = html;
