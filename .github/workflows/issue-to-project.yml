@@ -1,0 +1,82 @@
+# Variables marked as ***VARIABLE*** will be loaded into tables and will be editable
+
+name: Issue to Project automation
+on:
+  issues:
+    types: [opened]
+jobs:
+  add-to-project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add issue to project (via github-script)
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.TOKEN_PROJECT }}
+          script: |
+            const _PROJECT_URL = `https://github.com/users/jankoweb/projects/13`;
+            const parts = new URL(_PROJECT_URL).pathname.split('/').filter(Boolean);
+            const scope = parts[0];
+            const owner = parts[1];
+            const projectNumber = parts[3];
+
+            if (!['users', 'orgs'].includes(scope)) {
+              throw new Error('Unsupported project URL scope: ' + scope);
+            }
+
+            if (!projectNumber || Number.isNaN(Number(projectNumber))) {
+              throw new Error('Invalid project URL (missing number): ' + _PROJECT_URL);
+            }
+
+            const issueNodeId = context.payload?.issue?.node_id;
+            if (!issueNodeId) {
+              throw new Error('Issue node_id not found in event payload');
+            }
+
+            const query = scope === 'users'
+              ? `
+                query($login: String!, $number: Int!) {
+                  user(login: $login) {
+                    projectV2(number: $number) {
+                      id
+                    }
+                  }
+                }
+              `
+              : `
+                query($login: String!, $number: Int!) {
+                  organization(login: $login) {
+                    projectV2(number: $number) {
+                      id
+                    }
+                  }
+                }
+              `;
+
+            const projectResp = await github.graphql(query, {
+              login: owner,
+              number: Number(projectNumber),
+            });
+
+            const projectId = scope === 'users'
+              ? projectResp?.user?.projectV2?.id
+              : projectResp?.organization?.projectV2?.id;
+
+            if (!projectId) {
+              throw new Error('Project v2 not found: ' + _PROJECT_URL);
+            }
+
+            await github.graphql(
+              `
+                mutation($projectId: ID!, $contentId: ID!) {
+                  addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+                    item {
+                      id
+                    }
+                  }
+                }
+              `,
+              {
+                projectId,
+                contentId: issueNodeId,
+              }
+            );
